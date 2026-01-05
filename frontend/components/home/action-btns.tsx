@@ -1,5 +1,7 @@
 "use client";
 
+/* handle user or admin*/
+
 import { Button } from "../ui/button";
 import { MessageSquare, Shield } from "lucide-react";
 import { usePermissions } from "../permission-guard";
