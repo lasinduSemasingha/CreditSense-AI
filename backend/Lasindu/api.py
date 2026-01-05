@@ -11,7 +11,7 @@ import uvicorn
 # Initialize FastAPI app
 app = FastAPI(
     title="Impairment & ECL Prediction API",
-    description="High-accuracy prediction service for Impairment (99.59%) and 1 yr ECL (92.85%)",
+    description="High accuracy prediction service for Impairment (99.59%) and 1 yr ECL (92.85%)",
     version="1.0.0"
 )
 
