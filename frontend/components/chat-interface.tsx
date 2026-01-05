@@ -11,7 +11,7 @@ import { Composer } from "@/components/chat/Composer";
 import type { Message, MessageType } from "@/components/chat/types";
 import { toast } from "sonner";
 import { useCreateChatQueue } from "@/hooks/use-chat-queues";
-
+/*normal msg*/ 
 export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([
     {
