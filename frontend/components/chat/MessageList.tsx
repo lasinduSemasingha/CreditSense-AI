@@ -1,4 +1,5 @@
 "use client";
+/*number of messages*/
 
 import { MessageBubble } from "./MessageBubble";
 import { TypingIndicator } from "./TypingIndicator";
