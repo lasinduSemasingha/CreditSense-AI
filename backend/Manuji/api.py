@@ -410,3 +410,20 @@ async def model_info():
         'feature_columns': predictor.get('feature_columns'),
         'timestamp': predictor.get('timestamp')
     }
+
+@app.get('/model/feature_importance', tags=['Model'])
+async def feature_importance(model_name: Optional[str] = None):
+    if predictor is None:
+        raise HTTPException(status_code=503, detail="Models not loaded")
+    
+    if model_name is None:
+        model_name = predictor['best_model_name']
+    
+    model = predictor['models'].get(model_name)
+    
+    if hasattr(model, 'feature_importances_'):
+        importances = dict(zip(
+            predictor['feature_columns'], 
+            model.feature_importances_
+        ))
+        return sorted(importances.items(), key=lambda x: x[1], reverse=True)

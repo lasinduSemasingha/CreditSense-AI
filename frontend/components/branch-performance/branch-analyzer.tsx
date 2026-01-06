@@ -52,8 +52,30 @@ interface FacilityData {
   Arrears_Ratio: number;
 }
 
+interface APIFacilityData {
+  Branch_encoded: number;
+  "Facility Type_encoded": number;
+  FacilityAmount: number;
+  "Effective Rate": number;
+  "No of Rental in arrears": number;
+  Age: number;
+  ArrearsCapital: number;
+  ArrearsInterest: number;
+  ArrearsVat: number;
+  ArrearsOD: number;
+  FutureCapital: number;
+  FutureInterest: number;
+  "NET-OUTSTANDING": number;
+  Status_encoded: number;
+  NPLStatus_encoded: number;
+  "Last Receipt Paid Amount": number;
+  CD_Collection_Rental: number;
+  ClaimablePercentage: number;
+  Arrears_Ratio: number;
+}
+
 const defaultFacility: FacilityData = {
-  Branch: "Colombo",
+  Branch: "HEAD OFFICE",
   "Facility Type": "Motorcycle",
   FacilityAmount: 500000,
   "Effective Rate": 12.5,
@@ -66,18 +88,109 @@ const defaultFacility: FacilityData = {
   FutureCapital: 150000,
   FutureInterest: 12000,
   "NET-OUTSTANDING": 212100,
-  Status: "Active",
-  NPLStatus: "Performing",
+  Status: "CURRENT RUNNING",
+  NPLStatus: "Performing (P)",
   "Last Receipt Paid Amount": 25000,
   CD_Collection_Rental: 475000,
   ClaimablePercentage: 85,
   Arrears_Ratio: 0.15,
 };
 
-const branches = ["Colombo", "Galle", "Kandy", "Matara", "Jaffna", "Battaramulla"];
+// Function to convert UI facility data to API format
+const convertToAPIFormat = (facility: FacilityData): any => {
+  return {
+    Branch: facility.Branch,
+    "Facility Type": facility["Facility Type"],
+    FacilityAmount: facility.FacilityAmount,
+    "Effective Rate": facility["Effective Rate"],
+    "No of Rental in arrears": facility["No of Rental in arrears"],
+    Age: facility.Age,
+    ArrearsCapital: facility.ArrearsCapital,
+    ArrearsInterest: facility.ArrearsInterest,
+    ArrearsVat: facility.ArrearsVat,
+    ArrearsOD: facility.ArrearsOD,
+    FutureCapital: facility.FutureCapital,
+    FutureInterest: facility.FutureInterest,
+    "NET-OUTSTANDING": facility["NET-OUTSTANDING"],
+    Status: facility.Status,
+    NPLStatus: facility.NPLStatus.includes("(P)") ? "P" : "N", // Convert "Performing (P)" to "P" and "Non-Performing (N)" to "N"
+    "Last Receipt Paid Amount": facility["Last Receipt Paid Amount"],
+    CD_Collection_Rental: facility.CD_Collection_Rental,
+    ClaimablePercentage: facility.ClaimablePercentage,
+    Arrears_Ratio: facility.Arrears_Ratio,
+  };
+};
+
+const branches = [
+  "ANURADHAPURA",
+  "BADULLA",
+  "HEAD OFFICE",
+  "HYDE PARK",
+  "KANDY",
+  "KOTTAWA",
+  "MATARA",
+  "MATHUGAMA",
+  "MELSIRIPURA",
+  "MINUWANGODA",
+  "MULLAITIVU",
+  "NARAMMALA",
+  "WELLAWATHTHA"
+];
+
+// Branch encoding mapping
+const branchEncoding: { [key: string]: number } = {
+  "ANURADHAPURA": 0,
+  "BADULLA": 1,
+  "HEAD OFFICE": 2,
+  "HYDE PARK": 3,
+  "KANDY": 4,
+  "KOTTAWA": 5,
+  "MATARA": 6,
+  "MATHUGAMA": 7,
+  "MELSIRIPURA": 8,
+  "MINUWANGODA": 9,
+  "MULLAITIVU": 10,
+  "NARAMMALA": 11,
+  "WELLAWATHTHA": 12
+};
+
 const facilityTypes = ["Motorcycle", "Auto", "Three Wheeler"];
-const statuses = ["Active", "Inactive", "Default"];
-const nplStatuses = ["Performing", "Non-Performing", "Watch List"];
+
+// Facility type encoding
+const facilityTypeEncoding: { [key: string]: number } = {
+  "Motorcycle": 0,
+  "Auto": 1,
+  "Three Wheeler": 2
+};
+
+const statuses = [
+  "CURRENT RUNNING",
+  "EARLY SETTLEMENT COMPLETED",
+  "INITIATED/NOT ACTIVATED",
+  "NORMAL SETTLEMENT COMPLETED",
+  "REPOSSESSION AND SOLD",
+  "RESCHEDULED",
+  "WRITE OFF"
+];
+
+// Status encoding
+const statusEncoding: { [key: string]: number } = {
+  "CURRENT RUNNING": 0,
+  "EARLY SETTLEMENT COMPLETED": 1,
+  "INITIATED/NOT ACTIVATED": 2,
+  "NORMAL SETTLEMENT COMPLETED": 3,
+  "REPOSSESSION AND SOLD": 4,
+  "RESCHEDULED": 5,
+  "WRITE OFF": 6
+};
+
+const nplStatuses = ["Performing (P)", "Non-Performing (N)"];
+
+// NPL Status encoding - Critical: 'N' = 1, 'P' = 0
+const nplStatusEncoding: { [key: string]: number } = {
+  "Performing (P)": 0,
+  "Non-Performing (N)": 1
+};
 
 interface BranchPerformanceAnalyzerProps {
   onAnalyze: (results: any[]) => void;
@@ -92,6 +205,7 @@ export function BranchPerformanceAnalyzer({
   const [facilities, setFacilities] = useState<FacilityData[]>([defaultFacility]);
   const [analyzing, setAnalyzing] = useState(false);
   const [activeTab, setActiveTab] = useState<"single" | "batch">("single");
+  const [selectedModel, setSelectedModel] = useState<string>("Random Forest");
 
   const updateFacility = (key: keyof FacilityData, value: any) => {
     setFacility((prev) => ({
@@ -128,13 +242,14 @@ export function BranchPerformanceAnalyzer({
       }
 
       const predictions = await Promise.all(
-        dataToAnalyze.map((fac) =>
-          fetch("/api/predict-facility", {
+        dataToAnalyze.map((fac) => {
+          const apiData = convertToAPIFormat(fac);
+          return fetch(`/api/predict-facility?model_name=${encodeURIComponent(selectedModel)}`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify(fac),
+            body: JSON.stringify(apiData),
           })
             .then((res) => res.json())
             .then((data) => ({
@@ -143,7 +258,7 @@ export function BranchPerformanceAnalyzer({
               confidence: data.confidence,
               modelUsed: data.model_used,
             }))
-        )
+        })
       );
 
       onAnalyze(predictions);
@@ -531,6 +646,41 @@ export function BranchPerformanceAnalyzer({
 
             <Separator className="my-5" />
 
+            {/* Model Selection */}
+            <div className="p-4 rounded-xl bg-gradient-to-br from-cyan-50/50 to-blue-50/50 dark:from-cyan-950/20 dark:to-blue-950/20 border border-cyan-100 dark:border-cyan-900/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm font-semibold text-cyan-900 dark:text-cyan-100">AI Model Selection</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Choose the prediction model for analysis</p>
+                </div>
+                <Select value={selectedModel} onValueChange={setSelectedModel}>
+                  <SelectTrigger className="w-[200px] h-10 bg-white dark:bg-slate-950">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Random Forest">
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-blue-500" />
+                        Random Forest
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="XGBoost">
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-purple-500" />
+                        XGBoost
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="CatBoost">
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-indigo-500" />
+                        CatBoost
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="flex gap-3">
               <Button 
                 onClick={handleAnalyze} 
@@ -617,6 +767,41 @@ export function BranchPerformanceAnalyzer({
 
             <Separator className="my-5" />
 
+            {/* Model Selection */}
+            <div className="p-4 rounded-xl bg-gradient-to-br from-cyan-50/50 to-blue-50/50 dark:from-cyan-950/20 dark:to-blue-950/20 border border-cyan-100 dark:border-cyan-900/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm font-semibold text-cyan-900 dark:text-cyan-100">AI Model Selection</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Choose the prediction model for batch analysis</p>
+                </div>
+                <Select value={selectedModel} onValueChange={setSelectedModel}>
+                  <SelectTrigger className="w-[200px] h-10 bg-white dark:bg-slate-950">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Random Forest">
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-blue-500" />
+                        Random Forest
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="XGBoost">
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-purple-500" />
+                        XGBoost
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="CatBoost">
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-indigo-500" />
+                        CatBoost
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <Button 
               onClick={handleAnalyze} 
               disabled={analyzing || facilities.length === 0} 
@@ -645,17 +830,29 @@ export function BranchPerformanceAnalyzer({
           <Info className="h-4 w-4 text-blue-600" />
           <AlertTitle className="text-sm font-semibold text-blue-900 dark:text-blue-100">AI Prediction Models</AlertTitle>
           <AlertDescription className="flex flex-wrap gap-2 mt-2">
-            <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 border-0">
+            <Badge className={`${
+              selectedModel === "Random Forest" 
+                ? "bg-blue-600 text-white" 
+                : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+            } border-0`}>
               Random Forest
             </Badge>
-            <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400 border-0">
+            <Badge className={`${
+              selectedModel === "XGBoost" 
+                ? "bg-purple-600 text-white" 
+                : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+            } border-0`}>
               XGBoost
             </Badge>
-            <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400 border-0">
+            <Badge className={`${
+              selectedModel === "CatBoost" 
+                ? "bg-indigo-600 text-white" 
+                : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
+            } border-0`}>
               CatBoost
             </Badge>
             <span className="text-xs text-muted-foreground ml-auto mt-1">
-              Auto-selected based on data patterns
+              Currently using: {selectedModel}
             </span>
           </AlertDescription>
         </Alert>
