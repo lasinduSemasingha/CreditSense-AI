@@ -139,7 +139,7 @@ export function KnowledgeBaseManager() {
       }
     })();
   };
-
+/*deleted*/
   const handleDelete = (id: string) => {
     void (async () => {
       try {
