@@ -41,6 +41,16 @@ interface PerformanceResultsProps {
   isLoading: boolean;
 }
 
+// Normalize backend labels ("Good", "Poor", "Bad", "At Risk") into a simple bucket
+const categorizePrediction = (prediction: string | null | undefined) => {
+  const normalized = (prediction ?? "").toString().trim().toLowerCase();
+
+  if (["good", "performing", "healthy"].includes(normalized)) return "good" as const;
+  if (["bad", "poor", "at risk", "risk", "risky"].includes(normalized)) return "risk" as const;
+
+  return "unknown" as const;
+};
+
 export function PerformanceResults({
   results,
   isLoading,
@@ -48,25 +58,32 @@ export function PerformanceResults({
   const stats = useMemo(() => {
     if (results.length === 0) return null;
 
-    const good = results.filter((r) => r.prediction === "Good").length;
-    const bad = results.filter((r) => r.prediction === "Bad").length;
-    const avgConfidence =
-      results.reduce((sum, r) => sum + r.confidence, 0) / results.length;
+    let good = 0;
+    let risk = 0;
+    let confidenceTotal = 0;
 
     const byBranch = results.reduce(
       (acc, r) => {
         if (!acc[r.Branch]) {
-          acc[r.Branch] = { total: 0, good: 0, bad: 0, avgConfidence: 0 };
+          acc[r.Branch] = { total: 0, good: 0, risk: 0, avgConfidence: 0 };
         }
         acc[r.Branch].total += 1;
-        if (r.prediction === "Good") acc[r.Branch].good += 1;
-        else acc[r.Branch].bad += 1;
+        const bucket = categorizePrediction(r.prediction);
+        if (bucket === "good") {
+          good += 1;
+          acc[r.Branch].good += 1;
+        } else {
+          // treat any non-good outcome as risk to keep summary cards honest
+          risk += 1;
+          acc[r.Branch].risk += 1;
+        }
+        confidenceTotal += r.confidence;
         acc[r.Branch].avgConfidence += r.confidence;
         return acc;
       },
       {} as Record<
         string,
-        { total: number; good: number; bad: number; avgConfidence: number }
+        { total: number; good: number; risk: number; avgConfidence: number }
       >
     );
 
@@ -75,7 +92,10 @@ export function PerformanceResults({
       byBranch[branch].avgConfidence /= byBranch[branch].total;
     });
 
-    return { good, bad, avgConfidence, byBranch };
+    const total = good + risk || 1; // avoid division by zero for percentages
+    const avgConfidence = confidenceTotal / results.length;
+
+    return { good, risk, total, avgConfidence, byBranch };
   }, [results]);
 
   const getPredictionColor = (prediction: string) => {
@@ -173,7 +193,7 @@ export function PerformanceResults({
             </CardHeader>
             <CardContent className="relative">
               <p className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
-                {stats.good + stats.bad}
+                {stats.total}
               </p>
               <p className="text-xs text-muted-foreground mt-1">Analyzed in this batch</p>
             </CardContent>
@@ -198,11 +218,11 @@ export function PerformanceResults({
                   {stats.good}
                 </p>
                 <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-0">
-                  {Math.round((stats.good / (stats.good + stats.bad)) * 100)}%
+                  {Math.round((stats.good / stats.total) * 100)}%
                 </Badge>
               </div>
               <Progress 
-                value={(stats.good / (stats.good + stats.bad)) * 100} 
+                value={(stats.good / stats.total) * 100} 
                 className="h-2 mt-3 bg-green-100 dark:bg-green-950"
               />
             </CardContent>
@@ -224,14 +244,14 @@ export function PerformanceResults({
             <CardContent className="relative">
               <div className="flex items-baseline gap-3">
                 <p className="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent">
-                  {stats.bad}
+                  {stats.risk}
                 </p>
                 <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-0">
-                  {Math.round((stats.bad / (stats.good + stats.bad)) * 100)}%
+                  {Math.round((stats.risk / stats.total) * 100)}%
                 </Badge>
               </div>
               <Progress 
-                value={(stats.bad / (stats.good + stats.bad)) * 100} 
+                value={(stats.risk / stats.total) * 100} 
                 className="h-2 mt-3 bg-red-100 dark:bg-red-950"
               />
             </CardContent>
@@ -296,7 +316,7 @@ export function PerformanceResults({
                           <XCircle className="h-4 w-4 text-red-600" />
                           <span className="text-muted-foreground">At Risk</span>
                         </div>
-                        <span className="font-semibold text-red-600">{data.bad}</span>
+                        <span className="font-semibold text-red-600">{data.risk}</span>
                       </div>
                       <div className="flex items-center justify-between text-sm pt-2 border-t">
                         <div className="flex items-center gap-2">
@@ -382,20 +402,28 @@ export function PerformanceResults({
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          className={
-                            result.prediction === "Good"
-                              ? "bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900 dark:text-green-100 border-0"
-                              : "bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900 dark:text-red-100 border-0"
-                          }
-                        >
-                          {result.prediction === "Good" ? (
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                          ) : (
-                            <XCircle className="h-3 w-3 mr-1" />
-                          )}
-                          {result.prediction}
-                        </Badge>
+                        {(() => {
+                          const bucket = categorizePrediction(result.prediction);
+                          const isGood = bucket === "good";
+                          const displayLabel = result.prediction || (isGood ? "Good" : "At Risk");
+
+                          return (
+                            <Badge
+                              className={
+                                isGood
+                                  ? "bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900 dark:text-green-100 border-0"
+                                  : "bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900 dark:text-red-100 border-0"
+                              }
+                            >
+                              {isGood ? (
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                              ) : (
+                                <XCircle className="h-3 w-3 mr-1" />
+                              )}
+                              {displayLabel}
+                            </Badge>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">

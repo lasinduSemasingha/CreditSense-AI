@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Shield, Home, LogOut, LogIn, RotateCcw, BarChart3, TrendingUp, TrendingDown } from "lucide-react";
+import { MessageSquare, Shield, Home, LogOut, LogIn, RotateCcw, BarChart2, BarChart3, TrendingUp, TrendingDown } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/utils/auth-client";
@@ -146,22 +146,6 @@ export function AppHeader({ onClearChat }: AppHeaderProps) {
                 Impairment
               </Link>
             </Button>
-            {session?.user && (
-              <Button
-                variant="ghost"
-                size="sm"
-                asChild
-                className={cn(
-                  "transition-colors",
-                  isActive("/predict") && "bg-accent text-accent-foreground"
-                )}
-              >
-                <Link href="/predict">
-                  <BarChart2 className="mr-2 h-4 w-4" />
-                  Impairments
-                </Link>
-              </Button>
-            )}
           </nav>
         </div>
 
