@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Shield, Home, LogOut, LogIn, RotateCcw, BarChart2 } from "lucide-react";
+import { MessageSquare, Shield, Home, LogOut, LogIn, RotateCcw, BarChart3 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/utils/auth-client";
@@ -104,6 +104,20 @@ export function AppHeader({ onClearChat }: AppHeaderProps) {
               <Shield className="mr-2 h-4 w-4" />
               Admin
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className={cn(
+                "transition-colors",
+                isActive("/branch-performance") && "bg-accent text-accent-foreground"
+              )}
+            >
+              <Link href="/branch-performance">
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Analytics
+              </Link>
+            </Button>
             {session?.user && (
               <Button
                 variant="ghost"
@@ -188,6 +202,13 @@ export function AppHeader({ onClearChat }: AppHeaderProps) {
                 disabled={!!session && userRole !== "admin"}
               >
                 <Shield className="h-5 w-5" />
+              </Button>
+            )}
+            {!isActive("/branch-performance") && (
+              <Button variant="ghost" size="icon" asChild>
+                <Link href="/branch-performance">
+                  <BarChart3 className="h-5 w-5" />
+                </Link>
               </Button>
             )}
 
