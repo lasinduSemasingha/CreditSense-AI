@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Shield, Home, LogOut, LogIn, RotateCcw, BarChart3 } from "lucide-react";
+import { MessageSquare, Shield, Home, LogOut, LogIn, RotateCcw, BarChart3, TrendingUp, TrendingDown } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/utils/auth-client";
@@ -118,6 +118,50 @@ export function AppHeader({ onClearChat }: AppHeaderProps) {
                 Analytics
               </Link>
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className={cn(
+                "transition-colors",
+                isActive("/credit-risk") && "bg-accent text-accent-foreground"
+              )}
+            >
+              <Link href="/credit-risk">
+                <TrendingUp className="mr-2 h-4 w-4" />
+                Credit Risk
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className={cn(
+                "transition-colors",
+                isActive("/impairment") && "bg-accent text-accent-foreground"
+              )}
+            >
+              <Link href="/impairment">
+                <TrendingDown className="mr-2 h-4 w-4" />
+                Impairment
+              </Link>
+            </Button>
+            {session?.user && (
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className={cn(
+                  "transition-colors",
+                  isActive("/predict") && "bg-accent text-accent-foreground"
+                )}
+              >
+                <Link href="/predict">
+                  <BarChart2 className="mr-2 h-4 w-4" />
+                  Impairments
+                </Link>
+              </Button>
+            )}
           </nav>
         </div>
 
@@ -192,6 +236,14 @@ export function AppHeader({ onClearChat }: AppHeaderProps) {
               <Button variant="ghost" size="icon" asChild>
                 <Link href="/branch-performance">
                   <BarChart3 className="h-5 w-5" />
+                </Link>
+              </Button>
+            )}
+
+            {session?.user && !isActive("/predict") && (
+              <Button variant="ghost" size="icon" asChild>
+                <Link href="/predict">
+                  <BarChart2 className="h-5 w-5" />
                 </Link>
               </Button>
             )}
