@@ -2,19 +2,33 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertCircle, Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import {
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { 
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertCircle,
+  Loader2,
+  Calculator,
+  Database,
+  Upload,
+  Trash2,
+  CheckCircle2,
+  BarChart3,
+  Info
+} from "lucide-react";
+import { toast } from "sonner";
 
 interface FacilityData {
   Branch: string;
@@ -76,9 +90,8 @@ export function BranchPerformanceAnalyzer({
 }: BranchPerformanceAnalyzerProps) {
   const [facility, setFacility] = useState<FacilityData>(defaultFacility);
   const [facilities, setFacilities] = useState<FacilityData[]>([defaultFacility]);
-  const [useMultiple, setUseMultiple] = useState(false);
-  const [bulkData, setBulkData] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
+  const [activeTab, setActiveTab] = useState<"single" | "batch">("single");
 
   const updateFacility = (key: keyof FacilityData, value: any) => {
     setFacility((prev) => ({
@@ -89,13 +102,15 @@ export function BranchPerformanceAnalyzer({
 
   const addFacility = () => {
     setFacilities((prev) => [...prev, { ...facility }]);
-    toast.success("Facility added to batch");
+    toast.success("Facility added to batch", {
+      description: `Total facilities: ${facilities.length + 1}`,
+    });
   };
 
   const clearFacilities = () => {
     setFacilities([defaultFacility]);
     setFacility(defaultFacility);
-    setBulkData("");
+    toast.info("All facilities cleared");
   };
 
   const handleAnalyze = async () => {
@@ -103,10 +118,12 @@ export function BranchPerformanceAnalyzer({
       setAnalyzing(true);
       setIsLoading(true);
 
-      const dataToAnalyze = useMultiple ? facilities : [facility];
+      const dataToAnalyze = activeTab === "batch" ? facilities : [facility];
 
       if (dataToAnalyze.length === 0) {
-        toast.error("Please add at least one facility");
+        toast.error("No facilities to analyze", {
+          description: "Please add at least one facility",
+        });
         return;
       }
 
@@ -130,10 +147,14 @@ export function BranchPerformanceAnalyzer({
       );
 
       onAnalyze(predictions);
-      toast.success(`Analyzed ${predictions.length} facilities`);
+      toast.success("Analysis Complete", {
+        description: `Successfully analyzed ${predictions.length} facility${predictions.length > 1 ? 's' : ''}`,
+      });
     } catch (error) {
       console.error("Analysis error:", error);
-      toast.error("Failed to analyze facilities");
+      toast.error("Analysis Failed", {
+        description: "Please check your connection and try again",
+      });
     } finally {
       setAnalyzing(false);
       setIsLoading(false);
@@ -142,338 +163,503 @@ export function BranchPerformanceAnalyzer({
 
   const parseBulkData = () => {
     try {
-      const parsed = JSON.parse(`[${bulkData}]`);
+      const cleanedData = bulkData.trim();
+      const jsonString = cleanedData.startsWith("[") ? cleanedData : `[${cleanedData}]`;
+      const parsed = JSON.parse(jsonString);
+      
+      if (!Array.isArray(parsed)) {
+        throw new Error("Data must be an array");
+      }
+      
       setFacilities(parsed);
-      toast.success(`Loaded ${parsed.length} facilities`);
+      toast.success("Data Loaded", {
+        description: `Successfully loaded ${parsed.length} facilities`,
+      });
     } catch (error) {
-      toast.error("Invalid JSON format");
+      toast.error("Invalid JSON Format", {
+        description: "Please check your JSON syntax",
+      });
     }
   };
 
+  const [bulkData, setBulkData] = useState("");
+
   return (
-    <Card className="p-6 space-y-6">
-      <div className="space-y-2">
-        <h2 className="text-2xl font-bold">Analysis Input</h2>
-        <p className="text-sm text-muted-foreground">
-          Enter facility data for prediction
-        </p>
-      </div>
-
-      {/* Mode Toggle */}
-      <div className="flex gap-2">
-        <Button
-          variant={!useMultiple ? "default" : "outline"}
-          onClick={() => setUseMultiple(false)}
-          className="flex-1"
-        >
-          Single
-        </Button>
-        <Button
-          variant={useMultiple ? "default" : "outline"}
-          onClick={() => setUseMultiple(true)}
-          className="flex-1"
-        >
-          Batch
-        </Button>
-      </div>
-
-      {/* Single Facility Input */}
-      {!useMultiple ? (
-        <div className="space-y-4">
-          {/* Branch Info */}
-          <div className="space-y-2">
-            <Label>Branch</Label>
-            <Select value={facility.Branch} onValueChange={(v) => updateFacility("Branch", v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {branches.map((b) => (
-                  <SelectItem key={b} value={b}>
-                    {b}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Facility Type</Label>
-            <Select
-              value={facility["Facility Type"]}
-              onValueChange={(v) => updateFacility("Facility Type", v)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {facilityTypes.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Financial Details */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Facility Amount</Label>
-              <Input
-                type="number"
-                value={facility.FacilityAmount}
-                onChange={(e) =>
-                  updateFacility("FacilityAmount", parseFloat(e.target.value))
-                }
-              />
+    <Card className="border-0 shadow-xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950 overflow-hidden">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-600/10 to-purple-600/10 blur-3xl rounded-full -z-0" />
+      
+      <CardHeader className="pb-4 relative">
+        <div className="flex items-start justify-between">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 shadow-lg shadow-blue-500/20 mt-1">
+              <BarChart3 className="h-5 w-5 text-white" />
             </div>
-            <div className="space-y-2">
-              <Label>Effective Rate (%)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={facility["Effective Rate"]}
-                onChange={(e) =>
-                  updateFacility("Effective Rate", parseFloat(e.target.value))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Age (months)</Label>
-              <Input
-                type="number"
-                value={facility.Age}
-                onChange={(e) =>
-                  updateFacility("Age", parseFloat(e.target.value))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Arrears Count</Label>
-              <Input
-                type="number"
-                value={facility["No of Rental in arrears"]}
-                onChange={(e) =>
-                  updateFacility("No of Rental in arrears", parseFloat(e.target.value))
-                }
-              />
+            <div>
+              <CardTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Facility Analyzer
+              </CardTitle>
+              <CardDescription className="text-xs mt-1">
+                AI-powered risk prediction system
+              </CardDescription>
             </div>
           </div>
-
-          {/* Arrears Details */}
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">Arrears Breakdown</Label>
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                placeholder="Capital"
-                type="number"
-                value={facility.ArrearsCapital}
-                onChange={(e) =>
-                  updateFacility("ArrearsCapital", parseFloat(e.target.value))
-                }
-              />
-              <Input
-                placeholder="Interest"
-                type="number"
-                value={facility.ArrearsInterest}
-                onChange={(e) =>
-                  updateFacility("ArrearsInterest", parseFloat(e.target.value))
-                }
-              />
-              <Input
-                placeholder="VAT"
-                type="number"
-                value={facility.ArrearsVat}
-                onChange={(e) =>
-                  updateFacility("ArrearsVat", parseFloat(e.target.value))
-                }
-              />
-              <Input
-                placeholder="OD"
-                type="number"
-                value={facility.ArrearsOD}
-                onChange={(e) =>
-                  updateFacility("ArrearsOD", parseFloat(e.target.value))
-                }
-              />
-            </div>
-          </div>
-
-          {/* Future Payments */}
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">Future Payments</Label>
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                placeholder="Capital"
-                type="number"
-                value={facility.FutureCapital}
-                onChange={(e) =>
-                  updateFacility("FutureCapital", parseFloat(e.target.value))
-                }
-              />
-              <Input
-                placeholder="Interest"
-                type="number"
-                value={facility.FutureInterest}
-                onChange={(e) =>
-                  updateFacility("FutureInterest", parseFloat(e.target.value))
-                }
-              />
-            </div>
-          </div>
-
-          {/* Outstanding & Status */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>NET Outstanding</Label>
-              <Input
-                type="number"
-                value={facility["NET-OUTSTANDING"]}
-                onChange={(e) =>
-                  updateFacility("NET-OUTSTANDING", parseFloat(e.target.value))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Last Receipt Paid</Label>
-              <Input
-                type="number"
-                value={facility["Last Receipt Paid Amount"]}
-                onChange={(e) =>
-                  updateFacility(
-                    "Last Receipt Paid Amount",
-                    parseFloat(e.target.value)
-                  )
-                }
-              />
-            </div>
-          </div>
-
-          {/* Status Fields */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={facility.Status} onValueChange={(v) => updateFacility("Status", v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statuses.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>NPL Status</Label>
-              <Select
-                value={facility.NPLStatus}
-                onValueChange={(v) => updateFacility("NPLStatus", v)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {nplStatuses.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Collection & Claims */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>CD Collection Rental</Label>
-              <Input
-                type="number"
-                value={facility.CD_Collection_Rental}
-                onChange={(e) =>
-                  updateFacility("CD_Collection_Rental", parseFloat(e.target.value))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Claimable % </Label>
-              <Input
-                type="number"
-                value={facility.ClaimablePercentage}
-                onChange={(e) =>
-                  updateFacility("ClaimablePercentage", parseFloat(e.target.value))
-                }
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Arrears Ratio</Label>
-            <Input
-              type="number"
-              step="0.01"
-              value={facility.Arrears_Ratio}
-              onChange={(e) =>
-                updateFacility("Arrears_Ratio", parseFloat(e.target.value))
-              }
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <Button onClick={handleAnalyze} disabled={analyzing} className="flex-1">
-              {analyzing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Analyze Facility
-            </Button>
-            <Button onClick={addFacility} variant="outline" className="flex-1">
-              + Add to Batch
-            </Button>
-          </div>
+          <Badge variant="outline" className="px-2.5 py-1 border-green-200 bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-400">
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            Live
+          </Badge>
         </div>
-      ) : (
-        /* Batch Input */
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>JSON Data (comma-separated objects)</Label>
-            <Textarea
-              placeholder={`${JSON.stringify(defaultFacility)},\n${JSON.stringify(defaultFacility)}`}
-              value={bulkData}
-              onChange={(e) => setBulkData(e.target.value)}
-              className="font-mono text-xs min-h-[200px]"
-            />
-          </div>
+      </CardHeader>
 
-          <div className="flex gap-2">
-            <Button onClick={parseBulkData} variant="outline" className="flex-1">
-              Parse & Load
-            </Button>
-            <Button onClick={handleAnalyze} disabled={analyzing || facilities.length === 0} className="flex-1">
-              {analyzing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Analyze ({facilities.length})
-            </Button>
-          </div>
+      <CardContent className="relative">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-5">
+          <TabsList className="grid grid-cols-2 w-full h-11 p-1 bg-muted/50 backdrop-blur-sm">
+            <TabsTrigger value="single" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950 data-[state=active]:shadow-sm">
+              <Calculator className="h-4 w-4" />
+              <span className="font-medium">Single</span>
+            </TabsTrigger>
+            <TabsTrigger value="batch" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950 data-[state=active]:shadow-sm">
+              <Database className="h-4 w-4" />
+              <span className="font-medium">Batch</span>
+            </TabsTrigger>
+          </TabsList>
 
-          {facilities.length > 0 && (
-            <div className="text-sm text-muted-foreground space-y-2">
-              <p>Loaded {facilities.length} facilities</p>
-              <Button onClick={clearFacilities} variant="ghost" size="sm">
-                Clear All
+          <TabsContent value="single" className="space-y-3.5 mt-4">
+            <div className="space-y-3.5">
+              {/* Basic Information Section */}
+              <div className="p-3 rounded-xl bg-gradient-to-br from-blue-50/50 to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20 border border-blue-100 dark:border-blue-900/30">
+                <h3 className="text-xs font-semibold mb-2 flex items-center gap-2 text-blue-900 dark:text-blue-100">
+                  <div className="h-4 w-1 bg-gradient-to-b from-blue-600 to-purple-600 rounded-full" />
+                  Basic Information
+                </h3>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="branch" className="text-xs font-medium">Branch</Label>
+                      <Select value={facility.Branch} onValueChange={(v) => updateFacility("Branch", v)}>
+                        <SelectTrigger className="h-9 bg-white dark:bg-slate-950">
+                          <SelectValue placeholder="Select branch" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {branches.map((b) => (
+                            <SelectItem key={b} value={b}>{b}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="facility-type" className="text-xs font-medium">Facility Type</Label>
+                      <Select
+                        value={facility["Facility Type"]}
+                        onValueChange={(v) => updateFacility("Facility Type", v)}
+                      >
+                        <SelectTrigger className="h-9 bg-white dark:bg-slate-950">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {facilityTypes.map((t) => (
+                            <SelectItem key={t} value={t}>{t}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="amount" className="text-xs font-medium">Facility Amount</Label>
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-2 text-xs text-muted-foreground font-medium">LKR</span>
+                        <Input
+                          id="amount"
+                          type="number"
+                          className="pl-10 h-9 bg-white dark:bg-slate-950"
+                          value={facility.FacilityAmount}
+                          onChange={(e) =>
+                            updateFacility("FacilityAmount", parseFloat(e.target.value) || 0)
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="rate" className="text-xs font-medium">Effective Rate</Label>
+                      <div className="relative">
+                        <Input
+                          id="rate"
+                          type="number"
+                          step="0.1"
+                          className="pr-7 h-9 bg-white dark:bg-slate-950"
+                          value={facility["Effective Rate"]}
+                          onChange={(e) =>
+                            updateFacility("Effective Rate", parseFloat(e.target.value) || 0)
+                          }
+                        />
+                        <span className="absolute right-2.5 top-2 text-xs text-muted-foreground font-medium">%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="age" className="text-xs font-medium">Age (months)</Label>
+                      <Input
+                        id="age"
+                        type="number"
+                        className="h-9 bg-white dark:bg-slate-950"
+                        value={facility.Age}
+                        onChange={(e) =>
+                          updateFacility("Age", parseInt(e.target.value) || 0)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="arrears-count" className="text-xs font-medium">Arrears Count</Label>
+                      <Input
+                        id="arrears-count"
+                        type="number"
+                        className="h-9 bg-white dark:bg-slate-950"
+                        value={facility["No of Rental in arrears"]}
+                        onChange={(e) =>
+                          updateFacility("No of Rental in arrears", parseInt(e.target.value) || 0)
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Arrears & Financial Section */}
+              <div className="p-4 rounded-xl bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20 border border-amber-100 dark:border-amber-900/30">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 text-amber-900 dark:text-amber-100">
+                  <div className="h-5 w-1 bg-gradient-to-b from-amber-600 to-orange-600 rounded-full" />
+                  Arrears Breakdown
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: "Capital", key: "ArrearsCapital" },
+                    { label: "Interest", key: "ArrearsInterest" },
+                    { label: "VAT", key: "ArrearsVat" },
+                    { label: "OD", key: "ArrearsOD" },
+                  ].map((item) => (
+                    <div key={item.key} className="space-y-1.5">
+                      <Label className="text-xs font-medium">{item.label}</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2.5 text-xs text-muted-foreground font-medium">LKR</span>
+                        <Input
+                          type="number"
+                          className="pl-11 h-10 bg-white dark:bg-slate-950"
+                          value={facility[item.key as keyof FacilityData] as number}
+                          onChange={(e) =>
+                            updateFacility(item.key as keyof FacilityData, parseFloat(e.target.value) || 0)
+                          }
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Future Payments */}
+              <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-50/50 to-green-50/50 dark:from-emerald-950/20 dark:to-green-950/20 border border-emerald-100 dark:border-emerald-900/30">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 text-emerald-900 dark:text-emerald-100">
+                  <div className="h-5 w-1 bg-gradient-to-b from-emerald-600 to-green-600 rounded-full" />
+                  Future Payments
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Capital</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-xs text-muted-foreground font-medium">LKR</span>
+                      <Input
+                        type="number"
+                        className="pl-11 h-10 bg-white dark:bg-slate-950"
+                        value={facility.FutureCapital}
+                        onChange={(e) =>
+                          updateFacility("FutureCapital", parseFloat(e.target.value) || 0)
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Interest</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-xs text-muted-foreground font-medium">LKR</span>
+                      <Input
+                        type="number"
+                        className="pl-11 h-10 bg-white dark:bg-slate-950"
+                        value={facility.FutureInterest}
+                        onChange={(e) =>
+                          updateFacility("FutureInterest", parseFloat(e.target.value) || 0)
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Outstanding & Collection */}
+              <div className="p-4 rounded-xl bg-gradient-to-br from-violet-50/50 to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/20 border border-violet-100 dark:border-violet-900/30">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 text-violet-900 dark:text-violet-100">
+                  <div className="h-5 w-1 bg-gradient-to-b from-violet-600 to-purple-600 rounded-full" />
+                  Outstanding & Collection
+                </h3>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="net-outstanding" className="text-xs font-medium">NET Outstanding</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-xs text-muted-foreground font-medium">LKR</span>
+                      <Input
+                        id="net-outstanding"
+                        type="number"
+                        className="pl-11 h-10 bg-white dark:bg-slate-950"
+                        value={facility["NET-OUTSTANDING"]}
+                        onChange={(e) =>
+                          updateFacility("NET-OUTSTANDING", parseFloat(e.target.value) || 0)
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Last Receipt</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2.5 text-xs text-muted-foreground font-medium">LKR</span>
+                        <Input
+                          type="number"
+                          className="pl-11 h-10 bg-white dark:bg-slate-950"
+                          value={facility["Last Receipt Paid Amount"]}
+                          onChange={(e) =>
+                            updateFacility("Last Receipt Paid Amount", parseFloat(e.target.value) || 0)
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">CD Collection</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2.5 text-xs text-muted-foreground font-medium">LKR</span>
+                        <Input
+                          type="number"
+                          className="pl-11 h-10 bg-white dark:bg-slate-950"
+                          value={facility.CD_Collection_Rental}
+                          onChange={(e) =>
+                            updateFacility("CD_Collection_Rental", parseFloat(e.target.value) || 0)
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* Status & Metrics */}
+              <div className="p-4 rounded-xl bg-gradient-to-br from-rose-50/50 to-pink-50/50 dark:from-rose-950/20 dark:to-pink-950/20 border border-rose-100 dark:border-rose-900/30">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 text-rose-900 dark:text-rose-100">
+                  <div className="h-5 w-1 bg-gradient-to-b from-rose-600 to-pink-600 rounded-full" />
+                  Status & Metrics
+                </h3>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Status</Label>
+                      <Select value={facility.Status} onValueChange={(v) => updateFacility("Status", v)}>
+                        <SelectTrigger className="h-10 bg-white dark:bg-slate-950">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {statuses.map((s) => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">NPL Status</Label>
+                      <Select
+                        value={facility.NPLStatus}
+                        onValueChange={(v) => updateFacility("NPLStatus", v)}
+                      >
+                        <SelectTrigger className="h-10 bg-white dark:bg-slate-950">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {nplStatuses.map((s) => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="arrears-ratio" className="text-xs font-medium">Arrears Ratio</Label>
+                      <Input
+                        id="arrears-ratio"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="1"
+                        className="h-10 bg-white dark:bg-slate-950"
+                        value={facility.Arrears_Ratio}
+                        onChange={(e) =>
+                          updateFacility("Arrears_Ratio", parseFloat(e.target.value) || 0)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="claimable-percentage" className="text-xs font-medium">Claimable %</Label>
+                      <div className="relative">
+                        <Input
+                          id="claimable-percentage"
+                          type="number"
+                          min="0"
+                          max="100"
+                          className="pr-8 h-10 bg-white dark:bg-slate-950"
+                          value={facility.ClaimablePercentage}
+                          onChange={(e) =>
+                            updateFacility("ClaimablePercentage", parseFloat(e.target.value) || 0)
+                          }
+                        />
+                        <span className="absolute right-3 top-2.5 text-xs text-muted-foreground font-medium">%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Separator className="my-5" />
+
+            <div className="flex gap-3">
+              <Button 
+                onClick={handleAnalyze} 
+                disabled={analyzing} 
+                className="flex-1 h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg shadow-blue-500/20 hover:shadow-xl transition-all"
+                size="lg"
+              >
+                {analyzing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Calculator className="mr-2 h-4 w-4" />
+                    Analyze Facility
+                  </>
+                )}
+              </Button>
+              <Button 
+                onClick={addFacility} 
+                variant="outline" 
+                className="flex-1 h-10 border-2 hover:bg-muted/50"
+              >
+                <Database className="mr-2 h-4 w-4" />
+                Add to Batch
+                <Badge className="ml-2 bg-primary/10 text-primary hover:bg-primary/10">{facilities.length}</Badge>
               </Button>
             </div>
-          )}
-        </div>
-      )}
+          </TabsContent>
 
-      <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg flex gap-2 text-sm text-blue-900 dark:text-blue-100">
-        <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-        <div>
-          <p className="font-semibold">Prediction Models Available:</p>
-          <p>Random Forest, XGBoost, CatBoost</p>
-        </div>
-      </div>
+          <TabsContent value="batch" className="space-y-5 mt-5">
+            <div className="p-5 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/30 dark:from-slate-900 dark:to-blue-950/20 border-2 border-dashed border-blue-200 dark:border-blue-900/30">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                  <Upload className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Batch Data Input</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Paste JSON array of facility objects for bulk analysis
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-xs font-medium">JSON Data</Label>
+                <Textarea
+                  placeholder={`[\n  ${JSON.stringify(defaultFacility, null, 2).split('\n').slice(0, 5).join('\n')}\n  ...\n]`}
+                  value={bulkData}
+                  onChange={(e) => setBulkData(e.target.value)}
+                  className="font-mono text-xs min-h-[200px] resize-y bg-white dark:bg-slate-950 border-2"
+                />
+              </div>
+
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="font-normal">
+                    <Database className="h-3 w-3 mr-1" />
+                    {facilities.length} facilities loaded
+                  </Badge>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={clearFacilities}
+                    variant="outline"
+                    size="sm"
+                    className="h-9"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                    Clear
+                  </Button>
+                  <Button
+                    onClick={parseBulkData}
+                    size="sm"
+                    className="h-9 bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Upload className="h-3.5 w-3.5 mr-1.5" />
+                    Parse Data
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <Separator className="my-5" />
+
+            <Button 
+              onClick={handleAnalyze} 
+              disabled={analyzing || facilities.length === 0} 
+              className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg shadow-blue-500/20 hover:shadow-xl transition-all"
+              size="lg"
+            >
+              {analyzing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Analyzing {facilities.length} facilities...
+                </>
+              ) : (
+                <>
+                  <Database className="mr-2 h-4 w-4" />
+                  Analyze Batch
+                  <Badge className="ml-2 bg-white/20 text-white hover:bg-white/20">{facilities.length}</Badge>
+                </>
+              )}
+            </Button>
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+
+      <CardFooter className="bg-gradient-to-br from-muted/30 to-muted/50 pt-4 pb-4 border-t relative">
+        <Alert className="w-full border-blue-200 dark:border-blue-900/30 bg-blue-50/50 dark:bg-blue-950/20">
+          <Info className="h-4 w-4 text-blue-600" />
+          <AlertTitle className="text-sm font-semibold text-blue-900 dark:text-blue-100">AI Prediction Models</AlertTitle>
+          <AlertDescription className="flex flex-wrap gap-2 mt-2">
+            <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 border-0">
+              Random Forest
+            </Badge>
+            <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400 border-0">
+              XGBoost
+            </Badge>
+            <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400 border-0">
+              CatBoost
+            </Badge>
+            <span className="text-xs text-muted-foreground ml-auto mt-1">
+              Auto-selected based on data patterns
+            </span>
+          </AlertDescription>
+        </Alert>
+      </CardFooter>
     </Card>
   );
 }
