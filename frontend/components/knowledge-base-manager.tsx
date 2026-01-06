@@ -112,7 +112,7 @@ export function KnowledgeBaseManager() {
     setFormData({ title: item.title ?? "", content: item.content });
     setIsEditDialogOpen(true);
   };
-
+/*updated*/
   const handleUpdate = () => {
     if (!editingItem) return;
     void (async () => {
