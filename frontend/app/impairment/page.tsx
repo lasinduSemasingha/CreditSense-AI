@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { authClient } from "@/utils/auth-client";
 import { AppHeader } from "@/components/app-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,6 +47,10 @@ interface ImpairmentResult {
 }
 
 export default function ImpairmentPage() {
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const router = useRouter();
+  const { data: session } = authClient.useSession();
+
   const [formData, setFormData] = useState<ImpairmentFormData>({
     age: 0,
     due_date: 0,
@@ -58,6 +64,16 @@ export default function ImpairmentPage() {
 
   const [result, setResult] = useState<ImpairmentResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isCheckingAuth && session !== undefined) {
+      if (!session) {
+        router.push("/login");
+      } else {
+        setIsCheckingAuth(false);
+      }
+    }
+  }, [session, isCheckingAuth, router]);
 
   const updateField = (key: keyof ImpairmentFormData, value: number) => {
     setFormData((prev) => ({
@@ -213,6 +229,24 @@ export default function ImpairmentPage() {
       maximumFractionDigits: 2,
     }).format(value);
   };
+
+  if (isCheckingAuth || !session) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="flex justify-center">
+            <div className="p-4 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 dark:from-purple-950/30 dark:to-indigo-950/30">
+              <Loader2 className="h-8 w-8 text-purple-600 dark:text-purple-400 animate-spin" />
+            </div>
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold">Checking authentication...</h2>
+            <p className="text-sm text-muted-foreground mt-2">Please wait</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
