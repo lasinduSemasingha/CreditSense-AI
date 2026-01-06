@@ -1,0 +1,63 @@
+
+DEFAULT RISK PREDICTION MODEL - PERFORMANCE REPORT
+===================================================
+
+Model Type: Random Forest Classifier
+Training Date: 2025-12-27 22:25:36
+
+DATASET INFORMATION:
+--------------------
+Total Samples: 188866
+Default Cases: 140210
+Non-Default Cases: 140210
+Default Rate: 50.00%
+
+FEATURE INFORMATION:
+--------------------
+Total Features Used: 28
+Top 5 Features:
+1. Age (Importance: 0.2612)
+2. ArrearsOD (Importance: 0.1869)
+3. payment_regularity (Importance: 0.1310)
+4. No of Rental in arrears (Importance: 0.1169)
+5. overdue_intensity (Importance: 0.1161)
+
+MODEL PERFORMANCE:
+-------------------
+Accuracy: 0.9991
+Precision: 0.9989
+Recall: 0.9993
+F1-Score: 0.9991
+Cross-Validation Accuracy: 0.9990 (+/- 0.0001)
+
+RISK CATEGORY DISTRIBUTION (Test Set):
+--------------------------------------
+High Risk/Default    27956
+Low Risk             27951
+Medium Risk            177
+
+CONFUSION MATRIX:
+-----------------
+[[28012    30]
+ [   19 28023]]
+
+MODEL PARAMETERS:
+-----------------
+n_estimators: 200
+max_depth: 20
+min_samples_split: 5
+min_samples_leaf: 2
+max_features: sqrt
+
+BUSINESS INTERPRETATION:
+------------------------
+1. PD >= 0.80: High Risk/Default (Proactive collection actions needed)
+2. 0.20 <= PD < 0.80: Medium Risk (Close monitoring recommended)
+3. PD < 0.20: Low Risk (Standard monitoring)
+
+RECOMMENDATIONS:
+----------------
+1. Use PD scores for portfolio segmentation
+2. Implement different collection strategies based on risk categories
+3. Regularly retrain model with new data
+4. Monitor feature drift over time
