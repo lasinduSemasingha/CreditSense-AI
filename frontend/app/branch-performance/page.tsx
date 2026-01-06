@@ -1,14 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { authClient } from "@/utils/auth-client";
 import { AppHeader } from "@/components/app-header";
 import { BranchPerformanceAnalyzer } from "@/components/branch-performance/branch-analyzer";
 import { PerformanceResults } from "@/components/branch-performance/performance-results";
-import { BarChart3, TrendingUp, Activity } from "lucide-react";
+import { BarChart3, TrendingUp, Activity, Loader2, Lock } from "lucide-react";
 
 export default function BranchPerformancePage() {
   const [results, setResults] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const router = useRouter();
+  const { data: session } = authClient.useSession();
+
+  useEffect(() => {
+    if (isCheckingAuth && session !== undefined) {
+      if (!session) {
+        router.push("/login");
+      } else {
+        setIsCheckingAuth(false);
+      }
+    }
+  }, [session, isCheckingAuth, router]);
+
+  if (isCheckingAuth || !session) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 dark:from-slate-950 dark:via-blue-950/20 dark:to-slate-950 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="flex justify-center">
+            <div className="p-4 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-950/30 dark:to-purple-950/30">
+              <Loader2 className="h-8 w-8 text-blue-600 dark:text-blue-400 animate-spin" />
+            </div>
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Checking authentication...</h2>
+            <p className="text-sm text-muted-foreground mt-2">Please wait</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 dark:from-slate-950 dark:via-blue-950/20 dark:to-slate-950 pt-14">
