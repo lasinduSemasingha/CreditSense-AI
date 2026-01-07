@@ -19,7 +19,7 @@ CreditSense AI is a comprehensive machine learning platform designed to revoluti
 graph TB
     subgraph Frontend["🎨 Frontend Layer"]
         direction LR
-        A[("<div style='padding:10px'><b>Next.js Application</b><br/>Server-Side Rendered</div>")]
+        A["<b>Next.js Application</b><br/><i>Server-Side Rendered</i>"]
         A1["📊 Impairment<br/>Dashboard"]
         A2["🏢 Branch<br/>Analytics"]
         A3["⚠️ Risk<br/>Assessment"]
@@ -28,7 +28,7 @@ graph TB
     
     subgraph Backend["⚙️ Backend Layer"]
         direction LR
-        B[("<div style='padding:10px'><b>FastAPI Server</b><br/>Async Processing</div>")]
+        B["<b>FastAPI Server</b><br/><i>Async Processing</i>"]
         B1["🔍 Impairment<br/>Analysis API"]
         B2["📈 Branch<br/>Performance API"]
         B3["🎯 Default<br/>Risk API"]
@@ -43,15 +43,15 @@ graph TB
     end
     
     subgraph KB["📚 Knowledge Base"]
-        D["<b>Vector Store</b><br/>━━━━━━━━━━<br/>Embeddings<br/>& Documents<br/>━━━━━━━━━━<br/>Semantic Search"]
+        D["<b>Vector Store</b><br/>━━━━━━━━━━<br/>Embeddings & Documents<br/>━━━━━━━━━━<br/>Semantic Search"]
     end
     
     subgraph Database["💾 Database Layer"]
-        E[("<div style='padding:10px'><b>Supabase</b><br/>PostgreSQL + Real-time</div>")]
-        E1[("👤 User<br/>Data")]
-        E2[("💳 Transaction<br/>Records")]
-        E3[("🏪 Branch<br/>Data")]
-        E4[("💭 Chat<br/>History")]
+        E["<b>Supabase</b><br/><i>PostgreSQL + Real-time</i>"]
+        E1["👤 User<br/>Data"]
+        E2["💳 Transaction<br/>Records"]
+        E3["🏪 Branch<br/>Data"]
+        E4["💭 Chat<br/>History"]
     end
     
     A1 -.->|REST API| B1
@@ -73,20 +73,15 @@ graph TB
     C2 -.->|Feature Extraction| E3
     C3 -.->|Feature Extraction| E1
     
-    style Frontend fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style Backend fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
-    style ML fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-    style KB fill:#e8f5e9,stroke:#388e3c,stroke-width:3px
-    style Database fill:#fce4ec,stroke:#c2185b,stroke-width:3px
+    classDef frontendStyle fill:#f9f9f9,stroke:#333,stroke-width:2px,color:#000
+    classDef backendStyle fill:#f5f5f5,stroke:#333,stroke-width:2px,color:#000
+    classDef mlStyle fill:#fafafa,stroke:#333,stroke-width:2px,color:#000
+    classDef dbStyle fill:#f9f9f9,stroke:#333,stroke-width:2px,color:#000
     
-    style A fill:#bbdefb,stroke:#1565c0,stroke-width:2px
-    style B fill:#e1bee7,stroke:#6a1b9a,stroke-width:2px
-    style E fill:#f8bbd0,stroke:#ad1457,stroke-width:2px
-    
-    style C1 fill:#ffe0b2,stroke:#e65100,stroke-width:2px
-    style C2 fill:#ffe0b2,stroke:#e65100,stroke-width:2px
-    style C3 fill:#ffe0b2,stroke:#e65100,stroke-width:2px
-    style D fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    class A,A1,A2,A3,A4 frontendStyle
+    class B,B1,B2,B3,B4 backendStyle
+    class C1,C2,C3,D mlStyle
+    class E,E1,E2,E3,E4 dbStyle
 ```
 
 ## 🔧 Technology Stack
