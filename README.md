@@ -17,58 +17,76 @@ CreditSense AI is a comprehensive machine learning platform designed to revoluti
 
 ```mermaid
 graph TB
-    subgraph "Frontend Layer"
-        A[Next.js Application]
-        A1[Impairment Dashboard]
-        A2[Branch Analytics]
-        A3[Risk Assessment]
-        A4[AI Chatbot Interface]
+    subgraph Frontend["🎨 Frontend Layer"]
+        direction LR
+        A[("<div style='padding:10px'><b>Next.js Application</b><br/>Server-Side Rendered</div>")]
+        A1["📊 Impairment<br/>Dashboard"]
+        A2["🏢 Branch<br/>Analytics"]
+        A3["⚠️ Risk<br/>Assessment"]
+        A4["🤖 AI Chatbot<br/>Interface"]
     end
-
-    subgraph "Backend Layer"
-        B[FastAPI Server]
-        B1[Impairment Analysis API]
-        B2[Branch Performance API]
-        B3[Default Risk API]
-        B4[Chatbot API]
+    
+    subgraph Backend["⚙️ Backend Layer"]
+        direction LR
+        B[("<div style='padding:10px'><b>FastAPI Server</b><br/>Async Processing</div>")]
+        B1["🔍 Impairment<br/>Analysis API"]
+        B2["📈 Branch<br/>Performance API"]
+        B3["🎯 Default<br/>Risk API"]
+        B4["💬 Chatbot<br/>API"]
     end
-
-    subgraph "ML Models"
-        C1[Impairment Model<br/>.pkl]
-        C2[Branch Performance Model<br/>.pkl]
-        C3[Default Risk Model<br/>.pkl]
+    
+    subgraph ML["🧠 ML Models Layer"]
+        direction TB
+        C1["<b>Impairment Model</b><br/>━━━━━━━━━━<br/>Scikit-Learn Pipeline<br/>.pkl"]
+        C2["<b>Branch Performance</b><br/>━━━━━━━━━━<br/>XGBoost Classifier<br/>.pkl"]
+        C3["<b>Default Risk Model</b><br/>━━━━━━━━━━<br/>Ensemble Predictor<br/>.pkl"]
     end
-
-    subgraph "Knowledge Base"
-        D[Vector Embeddings<br/>& Documents]
+    
+    subgraph KB["📚 Knowledge Base"]
+        D["<b>Vector Store</b><br/>━━━━━━━━━━<br/>Embeddings<br/>& Documents<br/>━━━━━━━━━━<br/>Semantic Search"]
     end
-
-    subgraph "Database Layer"
-        E[(Supabase)]
-        E1[User Data]
-        E2[Transaction Records]
-        E3[Branch Data]
-        E4[Chat History]
+    
+    subgraph Database["💾 Database Layer"]
+        E[("<div style='padding:10px'><b>Supabase</b><br/>PostgreSQL + Real-time</div>")]
+        E1[("👤 User<br/>Data")]
+        E2[("💳 Transaction<br/>Records")]
+        E3[("🏪 Branch<br/>Data")]
+        E4[("💭 Chat<br/>History")]
     end
-
-    A1 --> B1
-    A2 --> B2
-    A3 --> B3
-    A4 --> B4
-
-    B1 --> C1
-    B2 --> C2
-    B3 --> C3
-    B4 --> D
-
-    B1 --> E
-    B2 --> E
-    B3 --> E
-    B4 --> E
-
-    C1 --> E2
-    C2 --> E3
-    C3 --> E1
+    
+    A1 -.->|REST API| B1
+    A2 -.->|REST API| B2
+    A3 -.->|REST API| B3
+    A4 -.->|WebSocket| B4
+    
+    B1 ==>|Inference| C1
+    B2 ==>|Inference| C2
+    B3 ==>|Inference| C3
+    B4 ==>|RAG Query| D
+    
+    B1 <-->|Query/Update| E
+    B2 <-->|Query/Update| E
+    B3 <-->|Query/Update| E
+    B4 <-->|Query/Update| E
+    
+    C1 -.->|Feature Extraction| E2
+    C2 -.->|Feature Extraction| E3
+    C3 -.->|Feature Extraction| E1
+    
+    style Frontend fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Backend fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style ML fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style KB fill:#e8f5e9,stroke:#388e3c,stroke-width:3px
+    style Database fill:#fce4ec,stroke:#c2185b,stroke-width:3px
+    
+    style A fill:#bbdefb,stroke:#1565c0,stroke-width:2px
+    style B fill:#e1bee7,stroke:#6a1b9a,stroke-width:2px
+    style E fill:#f8bbd0,stroke:#ad1457,stroke-width:2px
+    
+    style C1 fill:#ffe0b2,stroke:#e65100,stroke-width:2px
+    style C2 fill:#ffe0b2,stroke:#e65100,stroke-width:2px
+    style C3 fill:#ffe0b2,stroke:#e65100,stroke-width:2px
+    style D fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
 ```
 
 ## 🔧 Technology Stack
