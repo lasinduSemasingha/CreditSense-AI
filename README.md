@@ -1,642 +1,309 @@
-# Machine Learning Applications in Financial Leasing
+# CreditSense AI
 
-A comprehensive machine learning solution for financial leasing companies that provides risk prediction, branch performance analysis with AI chatbot, and impairment estimation with Expected Credit Loss (ECL) calculation.
+**Machine Learning Applications in Financial Leasing**
 
-## 📋 Table of Contents
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Features](#features)
-- [Technology Stack](#technology-stack)
-- [Machine Learning Models](#machine-learning-models)
-- [Project Structure](#project-structure)
-- [Installation & Setup](#installation--setup)
-- [API Endpoints](#api-endpoints)
-- [Usage](#usage)
-- [Model Performance](#model-performance)
-- [Contributing](#contributing)
+## 📋 Project Overview
 
-## 🎯 Overview
+CreditSense AI is a comprehensive machine learning platform designed to revolutionize financial leasing operations through intelligent automation and predictive analytics. The system integrates four powerful components to provide actionable insights, risk assessment, performance tracking, and intelligent customer support for financial leasing institutions.
 
-This project implements four critical machine learning applications for the financial leasing industry:
+### Key Features
 
-1. **Risk Prediction System** - Predicts credit risk and default probability for lease applications
-2. **Branch Performance Analytics** - Analyzes branch performance metrics with an AI-powered chatbot interface
-3. **Impairment Estimation** - Calculates Expected Credit Loss (ECL) for financial reporting
-4. **AI Chatbot Assistant** - Interactive assistant for querying branch performance and financial metrics
+- **Impairment Analysis**: Automated assessment of asset impairments and financial health monitoring
+- **Branch Performance Analysis**: Real-time tracking and evaluation of branch-level metrics and KPIs
+- **Default Risk Prediction**: ML-powered prediction models to assess customer default probability
+- **AI-Based Chatbot**: Intelligent conversational assistant with knowledge base integration
 
-## 🏗️ Architecture
+## 🏗️ System Architecture
 
 ```mermaid
 graph TB
-    subgraph "Frontend Layer"
-        A[React Application]
-        A1[Risk Prediction UI]
-        A2[Branch Analytics Dashboard]
-        A3[ECL Calculator UI]
-        A4[AI Chatbot Interface]
+    subgraph Frontend["🎨 Frontend Layer"]
+        direction LR
+        A["<b>Next.js Application</b><br/><i>Server-Side Rendered</i>"]
+        A1["📊 Impairment<br/>Dashboard"]
+        A2["🏢 Branch<br/>Analytics"]
+        A3["⚠️ Risk<br/>Assessment"]
+        A4["🤖 AI Chatbot<br/>Interface"]
     end
-
-    subgraph "API Layer"
-        B[FastAPI Backend]
-        B1[Risk Prediction API]
-        B2[Branch Performance API]
-        B3[ECL Calculation API]
-        B4[Chatbot API]
+    
+    subgraph Backend["⚙️ Backend Layer"]
+        direction LR
+        B["<b>FastAPI Server</b><br/><i>Async Processing</i>"]
+        B1["🔍 Impairment<br/>Analysis API"]
+        B2["📈 Branch<br/>Performance API"]
+        B3["🎯 Default<br/>Risk API"]
+        B4["💬 Chatbot<br/>API"]
     end
-
-    subgraph "ML Model Layer"
-        C1[Risk Models]
-        C2[Performance Models]
-        C3[ECL Models]
-        C4[NLP Models]
-        
-        C1 --> C1A[Random Forest]
-        C1 --> C1B[XGBoost]
-        C1 --> C1C[LightGBM]
-        C1 --> C1D[Neural Network]
-        
-        C2 --> C2A[Random Forest]
-        C2 --> C2B[XGBoost]
-        C2 --> C2C[LightGBM]
-        C2 --> C2D[Linear Regression]
-        
-        C3 --> C3A[Random Forest]
-        C3 --> C3B[XGBoost]
-        C3 --> C3C[Gradient Boosting]
-        C3 --> C3D[Neural Network]
-        
-        C4 --> C4A[LLM Integration]
-        C4 --> C4B[RAG Pipeline]
+    
+    subgraph ML["🧠 ML Models Layer"]
+        direction TB
+        C1["<b>Impairment Model</b><br/>━━━━━━━━━━<br/>Scikit-Learn Pipeline<br/>.pkl"]
+        C2["<b>Branch Performance</b><br/>━━━━━━━━━━<br/>XGBoost Classifier<br/>.pkl"]
+        C3["<b>Default Risk Model</b><br/>━━━━━━━━━━<br/>Ensemble Predictor<br/>.pkl"]
     end
-
-    subgraph "Data Layer"
-        D[(Database)]
-        E[(Model Storage)]
-        F[(Training Data)]
+    
+    subgraph KB["📚 Knowledge Base"]
+        D["<b>Vector Store</b><br/>━━━━━━━━━━<br/>Embeddings & Documents<br/>━━━━━━━━━━<br/>Semantic Search"]
     end
-
-    A1 --> B1
-    A2 --> B2
-    A3 --> B3
-    A4 --> B4
-
-    B1 --> C1
-    B2 --> C2
-    B3 --> C3
-    B4 --> C4
-
-    C1 --> E
-    C2 --> E
-    C3 --> E
-    C4 --> E
-
-    B --> D
-    C1 --> F
-    C2 --> F
-    C3 --> F
-
-    style A fill:#e1f5ff
-    style B fill:#fff3e0
-    style C1 fill:#f3e5f5
-    style C2 fill:#f3e5f5
-    style C3 fill:#f3e5f5
-    style C4 fill:#f3e5f5
-    style D fill:#e8f5e9
+    
+    subgraph Database["💾 Database Layer"]
+        E["<b>Supabase</b><br/><i>PostgreSQL + Real-time</i>"]
+        E1["👤 User<br/>Data"]
+        E2["💳 Transaction<br/>Records"]
+        E3["🏪 Branch<br/>Data"]
+        E4["💭 Chat<br/>History"]
+    end
+    
+    A1 -.->|REST API| B1
+    A2 -.->|REST API| B2
+    A3 -.->|REST API| B3
+    A4 -.->|WebSocket| B4
+    
+    B1 ==>|Inference| C1
+    B2 ==>|Inference| C2
+    B3 ==>|Inference| C3
+    B4 ==>|RAG Query| D
+    
+    B1 <-->|Query/Update| E
+    B2 <-->|Query/Update| E
+    B3 <-->|Query/Update| E
+    B4 <-->|Query/Update| E
+    
+    C1 -.->|Feature Extraction| E2
+    C2 -.->|Feature Extraction| E3
+    C3 -.->|Feature Extraction| E1
+    
+    classDef frontendStyle fill:#f9f9f9,stroke:#333,stroke-width:2px,color:#000
+    classDef backendStyle fill:#f5f5f5,stroke:#333,stroke-width:2px,color:#000
+    classDef mlStyle fill:#fafafa,stroke:#333,stroke-width:2px,color:#000
+    classDef dbStyle fill:#f9f9f9,stroke:#333,stroke-width:2px,color:#000
+    
+    class A,A1,A2,A3,A4 frontendStyle
+    class B,B1,B2,B3,B4 backendStyle
+    class C1,C2,C3,D mlStyle
+    class E,E1,E2,E3,E4 dbStyle
 ```
 
-### System Architecture Diagram
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant React Frontend
-    participant FastAPI Backend
-    participant ML Models
-    participant Database
-
-    User->>React Frontend: Input Data/Query
-    React Frontend->>FastAPI Backend: HTTP Request
-    FastAPI Backend->>ML Models: Load & Predict
-    ML Models->>ML Models: Model Comparison
-    ML Models-->>FastAPI Backend: Best Model Result
-    FastAPI Backend->>Database: Store Results
-    FastAPI Backend-->>React Frontend: JSON Response
-    React Frontend-->>User: Display Results
-```
-
-## ✨ Features
-
-### 1. Risk Prediction System
-- Predicts default probability for lease applicants
-- Credit risk scoring and classification
-- Multiple ML models comparison for best accuracy
-- Real-time prediction API
-- Feature importance analysis
-
-### 2. Branch Performance Analytics
-- Branch-wise performance metrics
-- Revenue and profit analysis
-- Portfolio quality assessment
-- Trend analysis and forecasting
-- Interactive AI chatbot for querying metrics
-
-### 3. Impairment Estimation & ECL Calculation
-- IFRS 9 compliant ECL calculation
-- Probability of Default (PD) estimation
-- Loss Given Default (LGD) calculation
-- Exposure at Default (EAD) computation
-- Stage classification (Stage 1, 2, 3)
-
-### 4. AI Chatbot Assistant
-- Natural language query processing
-- Branch performance insights
-- Financial metrics explanation
-- Historical data analysis
-- Conversational interface
-
-## 🛠️ Technology Stack
+## 🔧 Technology Stack
 
 ### Frontend
-- **React** 18.x
-- **TypeScript**
-- **Tailwind CSS** / Material-UI
-- **Recharts** for data visualization
-- **Axios** for API calls
-- **React Query** for state management
+- **Framework**: Next.js 14+
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **State Management**: React Context / Zustand
+- **Data Visualization**: Recharts / Chart.js
+- **HTTP Client**: Axios
 
 ### Backend
-- **FastAPI** - High-performance API framework
-- **Python** 3.9+
-- **Pydantic** - Data validation
-- **SQLAlchemy** - Database ORM
-- **Uvicorn** - ASGI server
+- **Framework**: FastAPI
+- **Language**: Python 3.9+
+- **API Documentation**: OpenAPI (Swagger)
+- **CORS Middleware**: FastAPI CORS
+- **Model Serving**: Pickle (.pkl) serialized models
 
 ### Machine Learning
-- **Scikit-learn** - Traditional ML algorithms
-- **XGBoost** - Gradient boosting
-- **LightGBM** - Light gradient boosting
-- **TensorFlow/Keras** - Neural networks
-- **Pandas** & **NumPy** - Data processing
-- **LangChain** - LLM integration for chatbot
-- **OpenAI API** / **Anthropic Claude** - NLP capabilities
+- **Libraries**: 
+  - scikit-learn
+  - pandas
+  - numpy
+  - joblib (for model serialization)
+- **Model Format**: .pkl (Pickle)
+- **Models**:
+  - Impairment Analysis Model
+  - Branch Performance Classifier
+  - Default Risk Predictor
+
+### AI Chatbot
+- **LLM Integration**: OpenAI API / Anthropic Claude
+- **Vector Database**: Supabase Vector (pgvector)
+- **Embeddings**: OpenAI Embeddings
+- **Knowledge Base**: Custom financial leasing documents
 
 ### Database
-- **PostgreSQL** / **MySQL** - Primary database
-- **Redis** - Caching layer
+- **Primary Database**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth
+- **Storage**: Supabase Storage
+- **Real-time**: Supabase Realtime subscriptions
 
-## 🤖 Machine Learning Models
+## 📦 Project Dependencies
 
-Each use case employs four different ML models, and the system automatically selects the best-performing model:
+### Backend Requirements (`requirements.txt`)
 
-### Risk Prediction Models
-1. **Random Forest Classifier**
-   - Ensemble learning method
-   - Handles non-linear relationships
-   - Feature importance ranking
-
-2. **XGBoost Classifier**
-   - Gradient boosting framework
-   - High accuracy on structured data
-   - Built-in regularization
-
-3. **LightGBM Classifier**
-   - Fast training speed
-   - Lower memory usage
-   - Handles large datasets efficiently
-
-4. **Neural Network (MLP)**
-   - Deep learning approach
-   - Complex pattern recognition
-   - Non-linear decision boundaries
-
-### Branch Performance Models
-1. **Random Forest Regressor**
-2. **XGBoost Regressor**
-3. **LightGBM Regressor**
-4. **Linear Regression with Regularization**
-
-### ECL Calculation Models
-1. **Random Forest (PD Estimation)**
-2. **XGBoost (LGD Estimation)**
-3. **Gradient Boosting (EAD Prediction)**
-4. **Neural Network (Stage Classification)**
-
-## 📁 Project Structure
-
-```
-financial-leasing-ml/
-│
-├── frontend/                    # React frontend
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── RiskPrediction/
-│   │   │   ├── BranchPerformance/
-│   │   │   ├── ECLCalculator/
-│   │   │   └── Chatbot/
-│   │   ├── services/
-│   │   │   └── api.ts
-│   │   ├── App.tsx
-│   │   └── index.tsx
-│   ├── package.json
-│   └── tsconfig.json
-│
-├── backend/                     # FastAPI backend
-│   ├── app/
-│   │   ├── api/
-│   │   │   ├── endpoints/
-│   │   │   │   ├── risk_prediction.py
-│   │   │   │   ├── branch_performance.py
-│   │   │   │   ├── ecl_calculation.py
-│   │   │   │   └── chatbot.py
-│   │   │   └── router.py
-│   │   ├── models/
-│   │   │   ├── ml_models.py
-│   │   │   └── database_models.py
-│   │   ├── services/
-│   │   │   ├── risk_service.py
-│   │   │   ├── performance_service.py
-│   │   │   ├── ecl_service.py
-│   │   │   └── chatbot_service.py
-│   │   ├── core/
-│   │   │   ├── config.py
-│   │   │   └── database.py
-│   │   └── main.py
-│   ├── requirements.txt
-│   └── Dockerfile
-│
-├── ml_models/                   # Machine Learning models
-│   ├── risk_prediction/
-│   │   ├── random_forest_model.pkl
-│   │   ├── xgboost_model.pkl
-│   │   ├── lightgbm_model.pkl
-│   │   └── neural_network_model.h5
-│   ├── branch_performance/
-│   ├── ecl_calculation/
-│   ├── training_scripts/
-│   │   ├── train_risk_models.py
-│   │   ├── train_performance_models.py
-│   │   └── train_ecl_models.py
-│   └── model_comparison.py
-│
-├── data/                        # Data directory
-│   ├── raw/
-│   ├── processed/
-│   └── sample_data/
-│
-├── notebooks/                   # Jupyter notebooks
-│   ├── EDA.ipynb
-│   ├── Model_Training.ipynb
-│   └── Model_Evaluation.ipynb
-│
-├── tests/                       # Test files
-│   ├── test_api.py
-│   └── test_models.py
-│
-├── docker-compose.yml
-├── .env.example
-├── .gitignore
-└── README.md
+```txt
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+pydantic==2.5.0
+scikit-learn==1.3.2
+pandas==2.1.3
+numpy==1.26.2
+joblib==1.3.2
+python-dotenv==1.0.0
+supabase==2.0.3
+openai==1.3.5
+langchain==0.0.335
+langchain-openai==0.0.2
+chromadb==0.4.18
 ```
 
-## 🚀 Installation & Setup
+### Frontend Dependencies (`package.json`)
+
+```json
+{
+  "dependencies": {
+    "next": "14.0.4",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "typescript": "5.3.3",
+    "tailwindcss": "3.3.6",
+    "@supabase/supabase-js": "^2.39.0",
+    "axios": "^1.6.2",
+    "recharts": "^2.10.3",
+    "lucide-react": "^0.294.0",
+    "zustand": "^4.4.7",
+    "react-hook-form": "^7.49.2",
+    "zod": "^3.22.4"
+  }
+}
+```
+
+## 🚀 Getting Started
 
 ### Prerequisites
+
+- Node.js 18+ and npm
 - Python 3.9+
-- Node.js 16+
-- PostgreSQL 13+
-- Git
+- Supabase account and project
+- OpenAI API key (for chatbot)
 
 ### Backend Setup
 
-1. **Clone the repository**
+1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/financial-leasing-ml.git
-cd financial-leasing-ml
+git clone https://github.com/yourusername/creditsense-ai.git
+cd creditsense-ai/backend
 ```
 
-2. **Create virtual environment**
+2. Create virtual environment:
 ```bash
-cd backend
 python -m venv venv
-
-# On Windows
-venv\Scripts\activate
-
-# On Linux/Mac
-source venv/bin/activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-3. **Install Python dependencies**
+3. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-4. **Set up environment variables**
-```bash
-cp .env.example .env
-# Edit .env with your configuration
-```
-
-Example `.env` file:
+4. Create `.env` file:
 ```env
-DATABASE_URL=postgresql://user:password@localhost:5432/financial_leasing
-REDIS_URL=redis://localhost:6379
-OPENAI_API_KEY=your_openai_key_here
-SECRET_KEY=your_secret_key_here
-ENVIRONMENT=development
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_key
+OPENAI_API_KEY=your_openai_key
 ```
 
-5. **Initialize database**
+5. Place trained models in `models/` directory:
+```
+models/
+  ├── impairment_model.pkl
+  ├── branch_performance_model.pkl
+  └── default_risk_model.pkl
+```
+
+6. Run the FastAPI server:
 ```bash
-# Run migrations
-alembic upgrade head
-
-# Or create tables directly
-python -m app.core.database
+uvicorn main:app --reload --port 8000
 ```
-
-6. **Train ML models** (Optional - pre-trained models included)
-```bash
-cd ../ml_models/training_scripts
-python train_risk_models.py
-python train_performance_models.py
-python train_ecl_models.py
-```
-
-7. **Start the backend server**
-```bash
-cd ../../backend
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Backend will be available at: `http://localhost:8000`
-API documentation: `http://localhost:8000/docs`
 
 ### Frontend Setup
 
-1. **Navigate to frontend directory**
+1. Navigate to frontend directory:
 ```bash
 cd ../frontend
 ```
 
-2. **Install dependencies**
+2. Install dependencies:
 ```bash
 npm install
-# or
-yarn install
 ```
 
-3. **Configure API endpoint**
+3. Create `.env.local` file:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+4. Run the development server:
 ```bash
-# Create .env file
-echo "REACT_APP_API_URL=http://localhost:8000" > .env
+npm run dev
 ```
 
-4. **Start development server**
-```bash
-npm start
-# or
-yarn start
-```
+5. Open [http://localhost:3000](http://localhost:5173)
 
-Frontend will be available at: `http://localhost:3000`
+## 📊 Component Details
 
-### Docker Setup (Alternative)
+### 1. Impairment Analysis
+Analyzes financial assets and predicts potential impairments using historical data and current market conditions.
 
-```bash
-# Build and run all services
-docker-compose up --build
+**Features**:
+- Asset health scoring
+- Impairment probability calculation
+- Historical trend analysis
+- Automated reporting
 
-# Run in detached mode
-docker-compose up -d
+### 2. Branch Performance Analysis
+Evaluates branch-level performance metrics including revenue, customer satisfaction, and operational efficiency.
 
-# Stop services
-docker-compose down
-```
+**Features**:
+- KPI dashboards
+- Comparative analysis across branches
+- Performance trend visualization
+- Predictive performance modeling
 
-## 🔌 API Endpoints
+### 3. Default Risk Prediction
+Assesses the likelihood of customer default using machine learning algorithms trained on historical leasing data.
 
-### Risk Prediction
-```
-POST /api/v1/risk/predict
-GET  /api/v1/risk/models
-GET  /api/v1/risk/model-performance
-```
+**Features**:
+- Credit risk scoring
+- Default probability estimation
+- Customer segmentation
+- Early warning alerts
 
-### Branch Performance
-```
-GET  /api/v1/performance/branches
-GET  /api/v1/performance/branch/{branch_id}
-POST /api/v1/performance/predict
-GET  /api/v1/performance/trends
-```
+### 4. AI-Based Chatbot
+Provides intelligent assistance for financial leasing queries using natural language processing and a comprehensive knowledge base.
 
-### ECL Calculation
-```
-POST /api/v1/ecl/calculate
-GET  /api/v1/ecl/portfolio
-POST /api/v1/ecl/stage-classification
-GET  /api/v1/ecl/impairment-report
-```
+**Features**:
+- Natural language understanding
+- Context-aware responses
+- Knowledge base integration
+- Multi-turn conversations
+- Query history tracking
 
-### Chatbot
-```
-POST /api/v1/chatbot/query
-GET  /api/v1/chatbot/history
-POST /api/v1/chatbot/clear-history
-```
-
-### Example API Request
-
-**Risk Prediction:**
-```bash
-curl -X POST "http://localhost:8000/api/v1/risk/predict" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "customer_age": 35,
-    "annual_income": 50000,
-    "employment_duration": 5,
-    "loan_amount": 20000,
-    "credit_score": 720,
-    "debt_to_income": 0.3
-  }'
-```
-
-**Response:**
-```json
-{
-  "prediction": "low_risk",
-  "probability": 0.85,
-  "best_model": "XGBoost",
-  "all_models_results": {
-    "random_forest": 0.83,
-    "xgboost": 0.85,
-    "lightgbm": 0.84,
-    "neural_network": 0.82
-  },
-  "risk_score": 152,
-  "recommendation": "Approve"
-}
-```
-
-## 💻 Usage
-
-### 1. Risk Prediction
-
-```python
-import requests
-
-# Prepare customer data
-data = {
-    "customer_age": 35,
-    "annual_income": 50000,
-    "employment_duration": 5,
-    "loan_amount": 20000,
-    "credit_score": 720,
-    "debt_to_income": 0.3
-}
-
-# Make prediction
-response = requests.post(
-    "http://localhost:8000/api/v1/risk/predict",
-    json=data
-)
-
-result = response.json()
-print(f"Risk Level: {result['prediction']}")
-print(f"Best Model: {result['best_model']}")
-```
-
-### 2. ECL Calculation
-
-```python
-# Calculate Expected Credit Loss
-ecl_data = {
-    "exposure_at_default": 100000,
-    "credit_rating": "BBB",
-    "time_horizon": 12,
-    "collateral_value": 80000,
-    "customer_segment": "corporate"
-}
-
-response = requests.post(
-    "http://localhost:8000/api/v1/ecl/calculate",
-    json=ecl_data
-)
-
-ecl_result = response.json()
-print(f"ECL Amount: ${ecl_result['ecl_amount']}")
-print(f"Stage: {ecl_result['stage']}")
-```
-
-### 3. Chatbot Query
-
-```python
-# Query branch performance
-query = {
-    "message": "What is the performance of Branch A in Q3 2024?",
-    "session_id": "user_123"
-}
-
-response = requests.post(
-    "http://localhost:8000/api/v1/chatbot/query",
-    json=query
-)
-
-answer = response.json()
-print(answer['response'])
-```
-
-## 📊 Model Performance
-
-### Risk Prediction Models Comparison
-
-| Model | Accuracy | Precision | Recall | F1-Score | AUC-ROC |
-|-------|----------|-----------|--------|----------|---------|
-| Random Forest | 87.3% | 0.85 | 0.86 | 0.855 | 0.92 |
-| **XGBoost** | **89.1%** | **0.88** | **0.87** | **0.875** | **0.94** |
-| LightGBM | 88.5% | 0.87 | 0.86 | 0.865 | 0.93 |
-| Neural Network | 86.8% | 0.84 | 0.85 | 0.845 | 0.91 |
-
-**Best Model:** XGBoost (Selected for production)
-
-### Branch Performance Models Comparison
-
-| Model | RMSE | MAE | R² Score |
-|-------|------|-----|----------|
-| Random Forest | 2.45 | 1.87 | 0.89 |
-| **XGBoost** | **2.31** | **1.76** | **0.91** |
-| LightGBM | 2.38 | 1.82 | 0.90 |
-| Linear Regression | 3.12 | 2.45 | 0.82 |
-
-**Best Model:** XGBoost (Selected for production)
-
-### ECL Calculation Models Comparison
-
-| Component | Best Model | Accuracy/R² |
-|-----------|------------|-------------|
-| PD Estimation | XGBoost | 0.88 |
-| LGD Calculation | Random Forest | 0.85 |
-| EAD Prediction | XGBoost | 0.89 |
-| Stage Classification | Neural Network | 91.2% |
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-pytest
-
-# Run specific test file
-pytest tests/test_api.py
-
-# Run with coverage
-pytest --cov=app tests/
-```
-
-## 📝 Model Training
-
-To retrain models with new data:
-
-```bash
-cd ml_models/training_scripts
-
-# Train risk prediction models
-python train_risk_models.py --data ../data/processed/risk_data.csv
-
-# Train branch performance models
-python train_performance_models.py --data ../data/processed/performance_data.csv
-
-# Train ECL models
-python train_ecl_models.py --data ../data/processed/ecl_data.csv
-
-# Compare all models
-python model_comparison.py
-```
 
 ## 🔒 Security
 
-- API authentication using JWT tokens
-- Rate limiting on API endpoints
-- Input validation with Pydantic
-- SQL injection prevention with SQLAlchemy ORM
-- CORS configuration for frontend
-- Environment variables for sensitive data
+- JWT-based authentication via Supabase Auth
+- Row-level security policies in Supabase
+- API rate limiting
+- Input validation and sanitization
+- Environment variable management for sensitive credentials
 
-## 📈 Future Enhancements
+## 📈 Model Training
 
-- [ ] Real-time model monitoring and retraining
-- [ ] A/B testing framework for model deployment
-- [ ] Advanced fraud detection module
-- [ ] Mobile application (React Native)
-- [ ] Multi-language support
-- [ ] Advanced visualization dashboard
-- [ ] Integration with external credit bureaus
-- [ ] Automated model explainability reports
+The machine learning models are trained offline and serialized as `.pkl` files. To retrain models:
+
+1. Prepare training data from Supabase
+2. Run training scripts in `ml_training/` directory
+3. Serialize models using `joblib`
+4. Deploy updated models to `backend/models/`
 
 ## 🤝 Contributing
 
+Contributions are welcome! Please follow these steps:
+
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
@@ -647,24 +314,23 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Team
 
-- **Data Science Team** - ML model development
-- **Backend Team** - FastAPI implementation
-- **Frontend Team** - React UI/UX
-- **DevOps Team** - Deployment and infrastructure
+- **Project Lead**: [Your Name]
+- **ML Engineers**: [Names]
+- **Full Stack Developers**: [Names]
+- **UI/UX Designer**: [Name]
 
-## 📧 Contact
+## 📞 Contact
 
-For questions or support, please contact:
-- Email: support@financialleasing.com
-- GitHub Issues: [Create an issue](https://github.com/yourusername/financial-leasing-ml/issues)
+For questions or support, please reach out to:
+- Email: support@creditsense.ai
+- Website: [www.creditsense.ai](https://www.creditsense.ai)
 
 ## 🙏 Acknowledgments
 
-- IFRS 9 guidelines for ECL calculation
-- Open-source ML libraries and frameworks
-- Financial leasing industry experts
-- Contributors and testers
+- Financial leasing domain experts for guidance
+- Open source community for excellent tools and libraries
+- Beta testers for valuable feedback
 
 ---
 
-**Built with ❤️ for the Financial Leasing Industry**
+**Built with ❤️ by the CreditSense AI Team**

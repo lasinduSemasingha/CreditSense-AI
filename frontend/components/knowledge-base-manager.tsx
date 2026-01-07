@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,7 +22,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit, Trash2, FileText } from "lucide-react";
+import { Plus, Search, Edit, Trash2, FileText, Upload } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -35,6 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { uploadKnowledgeFromExcel } from "@/lib/services/knowledge-base-service";
 
 type Doc = { id: string; content: string; title?: string | null };
 
@@ -47,6 +48,7 @@ export function KnowledgeBaseManager() {
   const [formData, setFormData] = useState({ title: "", content: "" });
   const [lastActionAt, setLastActionAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Load documents
   useEffect(() => {
@@ -160,6 +162,33 @@ export function KnowledgeBaseManager() {
     })();
   };
 
+  const handleBulkUpload = () => {
+    const node = fileInputRef.current;
+    if (!node) return;
+    node.value = ""; // reset so same file can be re-selected
+    node.click();
+  };
+
+  const onFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    void (async () => {
+      try {
+        setLoading(true);
+        const created = await uploadKnowledgeFromExcel(file);
+        setKnowledge((prev) => [...created, ...prev]);
+        setLastActionAt(Date.now());
+        toast.success(`Uploaded ${created.length} knowledge items`);
+      } catch (e: any) {
+        console.error(e);
+        toast.error(e?.message || "Failed to upload file");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  };
+
   const apiStatus = loading ? "Loading" : "Ready";
 
   return (
@@ -229,6 +258,27 @@ export function KnowledgeBaseManager() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={handleBulkUpload} disabled={loading}>
+              <Upload className="mr-2 h-4 w-4" />
+              Upload Excel/CSV
+            </Button>
+            <a
+              href="/templates/knowledge-base-template.csv"
+              download
+              className="text-sm text-primary hover:underline"
+            >
+              Download template
+            </a>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+              className="hidden"
+              onChange={onFileSelected}
+            />
+          </div>
         </div>
 
         {/* <div className="grid gap-4 md:grid-cols-4"> */}

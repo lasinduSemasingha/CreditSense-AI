@@ -11,7 +11,7 @@ import uvicorn
 # Initialize FastAPI app
 app = FastAPI(
     title="Impairment & ECL Prediction API",
-    description="High-accuracy prediction service for Impairment (99.59%) and 1 yr ECL (92.85%)",
+    description="High accuracy prediction service for Impairment (99.59%) and 1 yr ECL (92.85%)",
     version="1.0.0"
 )
 
@@ -24,17 +24,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load models and scaler at startup
-print("Loading models...")
-try:
-    # Best models based on your results
-    impairment_model = joblib.load('gradient_boosting_impairment.pkl')  # 99.59% accuracy
-    ecl_model = joblib.load('stacking_ensemble_ecl.pkl')  # 92.85% accuracy
-    scaler = joblib.load('scaler_advanced.pkl')  # REQUIRED - models expect scaled data
-    print("✓ Models and scaler loaded successfully!")
-except Exception as e:
-    print(f"Error loading models: {e}")
-    print("Make sure all model files are in the same directory as this script")
+@app.on_event("startup")
+def load_models():
+    global impairment_model, ecl_model, scaler, models_loaded
+
+    try:
+        impairment_model = joblib.load("gradient_boosting_impairment.pkl")
+        ecl_model = joblib.load("stacking_ensemble_ecl.pkl")
+        scaler = joblib.load("scaler_advanced.pkl")
+        models_loaded = True
+        print("✓ Models and scaler loaded successfully")
+    except Exception as e:
+        models_loaded = False
+        print("✗ Failed to load models:", e)
 
 # Pydantic models for request validation
 class LoanInput(BaseModel):
@@ -168,9 +170,14 @@ async def predict_single(loan: LoanInput):
     - **age**: Borrower's age
     - **due_date**: Optional - Due date as integer (days value)
     """
+    # Return 503 if models or scaler not loaded
+    if not models_loaded or impairment_model is None or ecl_model is None or scaler is None:
+        raise HTTPException(status_code=503, detail="Models or scaler not loaded; prediction unavailable")
+
     try:
-        # Convert to DataFrame
-        data = pd.DataFrame([loan.dict()])
+        # Convert to DataFrame (support Pydantic v2 `model_dump` and v1 `dict`)
+        loan_data = loan.model_dump() if hasattr(loan, "model_dump") else loan.dict()
+        data = pd.DataFrame([loan_data])
         
         # Engineer features
         data_engineered = engineer_features(data)
@@ -201,9 +208,14 @@ async def predict_batch(batch: BatchLoanInput):
     
     Accepts a list of loan inputs and returns predictions for all
     """
+    # Return 503 if models or scaler not loaded
+    if not models_loaded or impairment_model is None or ecl_model is None or scaler is None:
+        raise HTTPException(status_code=503, detail="Models or scaler not loaded; batch prediction unavailable")
+
     try:
-        # Convert to DataFrame
-        loans_data = [loan.dict() for loan in batch.loans]
+        # Convert to DataFrame (support Pydantic v2 `model_dump` and v1 `dict`)
+        loans_data = [l.model_dump() if hasattr(l, "model_dump") else l.dict() for l in batch.loans]
+        df = pd.DataFrame(loans_data)
         df = pd.DataFrame(loans_data)
         
         # Engineer features
