@@ -596,7 +596,7 @@ Advanced RAG-based (Retrieval-Augmented Generation) multimodal chatbot designed 
 5. **Response Generation**: LLM generates accurate, contextual responses
 
 **Technology Stack**:
-- **LLM**: OpenAI GPT-4/GPT-3.5-turbo
+- **LLM**: QWEN 2.5
 - **Embeddings**: OpenAI text-embedding-ada-002
 - **Vector Store**: Supabase pgvector + ChromaDB
 - **Orchestration**: LangChain framework
