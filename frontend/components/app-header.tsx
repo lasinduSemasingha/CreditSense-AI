@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Shield, Home, LogOut, LogIn, RotateCcw, BarChart2, BarChart3, TrendingUp, TrendingDown } from "lucide-react";
+import { MessageSquare, Shield, Home, LogOut, LogIn, RotateCcw, BarChart2, BarChart3, TrendingUp, TrendingDown, Inbox } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/utils/auth-client";
@@ -91,6 +91,23 @@ export function AppHeader({ onClearChat }: AppHeaderProps) {
               <MessageSquare className="mr-2 h-4 w-4" />
               Chat
             </Button>
+            {userRole === "user" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className={cn(
+                  "transition-colors",
+                  (isActive("/my-inquiries") || pathname.startsWith("/my-inquiries/") || isActive("/contact-agent")) &&
+                    "bg-accent text-accent-foreground"
+                )}
+              >
+                <Link href="/my-inquiries">
+                  <Inbox className="mr-2 h-4 w-4" />
+                  My Inquiries
+                </Link>
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"

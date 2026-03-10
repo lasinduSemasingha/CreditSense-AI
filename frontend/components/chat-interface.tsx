@@ -11,6 +11,16 @@ import { Composer } from "@/components/chat/Composer";
 import type { Message, MessageType } from "@/components/chat/types";
 import { toast } from "sonner";
 import { useCreateChatQueue } from "@/hooks/use-chat-queues";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { UserRound } from "lucide-react";
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp", "image/svg+xml"];
 
@@ -34,6 +44,7 @@ export function ChatInterface() {
   const [isExtractingDoc, setIsExtractingDoc] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<File | null>(null);
+  const [showContactAgentDialog, setShowContactAgentDialog] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -476,6 +487,19 @@ export function ChatInterface() {
       </ScrollArea>
 
       <div className="border-t bg-card p-4">
+        {/* Contact a Human Agent button */}
+        <div className="max-w-3xl mx-auto mb-3 flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-muted-foreground hover:text-foreground"
+            onClick={() => setShowContactAgentDialog(true)}
+          >
+            <UserRound className="h-4 w-4" />
+            Contact a Human Agent
+          </Button>
+        </div>
+
         <Composer
           input={input}
           onInputChange={setInput}
@@ -495,6 +519,38 @@ export function ChatInterface() {
           onClearDocument={() => setSelectedDocument(null)}
         />
       </div>
+
+      {/* Contact Agent confirmation dialog */}
+      <Dialog open={showContactAgentDialog} onOpenChange={setShowContactAgentDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserRound className="h-5 w-5 text-primary" />
+              Contact a Human Agent
+            </DialogTitle>
+            <DialogDescription>
+              You will be taken to a contact form where you can describe your issue.
+              A member of our support team will review your inquiry and respond as soon as possible.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowContactAgentDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setShowContactAgentDialog(false);
+                router.push("/contact-agent");
+              }}
+            >
+              Continue to Contact Form
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
