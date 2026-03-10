@@ -37,13 +37,16 @@ interface ImpairmentFormData {
   tenor: number;
 }
 
+// Per-target result: model-name keys → predicted value, plus ensemble_mean and confidence_pct
+interface ModelPredictions {
+  ensemble_mean: number;
+  confidence_pct: number;
+  [key: string]: number;
+}
+
 interface ImpairmentResult {
-  impairment: number;
-  ecl_1yr: number;
-  impairment_model: string;
-  ecl_model: string;
-  impairment_accuracy: string;
-  ecl_accuracy: string;
+  impairment: ModelPredictions;
+  ecl_1yr: ModelPredictions;
 }
 
 export default function ImpairmentPage() {
@@ -177,7 +180,7 @@ export default function ImpairmentPage() {
 
     setIsLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/predict", {
+      const response = await fetch("/api/impairment", {
         method: "POST",
         headers: {
           "accept": "application/json",
@@ -192,8 +195,8 @@ export default function ImpairmentPage() {
 
       const data: ImpairmentResult = await response.json();
       
-      // Validate results - impairment and ECL should not be negative
-      if (data.impairment < 0 || data.ecl_1yr < 0) {
+      // Validate results - ensemble_mean should not be negative
+      if (data.impairment.ensemble_mean < 0 || data.ecl_1yr.ensemble_mean < 0) {
         toast.error("Invalid Prediction Result", {
           description: "Model returned negative values. Please verify your input data and try again with realistic values.",
         });
@@ -201,7 +204,7 @@ export default function ImpairmentPage() {
       }
 
       // Warn if values are unusually high
-      if (data.impairment > formData.facility_amount * 2) {
+      if (data.impairment.ensemble_mean > formData.facility_amount * 2) {
         toast.warning("Unusually High Impairment", {
           description: "Impairment exceeds 200% of facility amount. Please verify input values are correct.",
         });
@@ -547,20 +550,30 @@ export default function ImpairmentPage() {
                         </h3>
                       </div>
                       <Badge className="bg-rose-600 text-white border-0">
-                        {result.impairment_model}
+                        Ensemble
                       </Badge>
                     </div>
                     <div className="text-3xl font-bold text-rose-700 dark:text-rose-300 mb-2">
-                      {formatCurrency(result.impairment)}
+                      {formatCurrency(result.impairment.ensemble_mean)}
+                    </div>
+                    <div className="space-y-1 mb-2">
+                      {Object.entries(result.impairment)
+                        .filter(([k]) => k !== "ensemble_mean" && k !== "confidence_pct")
+                        .map(([model, val]) => (
+                          <div key={model} className="flex justify-between text-xs text-muted-foreground">
+                            <span>{model}</span>
+                            <span>{formatCurrency(val)}</span>
+                          </div>
+                        ))}
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Model Accuracy:</span>
+                      <span className="text-xs text-muted-foreground">Confidence:</span>
                       <Badge variant="outline" className="border-rose-300 text-rose-700 dark:text-rose-400">
-                        {result.impairment_accuracy}
+                        {result.impairment.confidence_pct.toFixed(1)}%
                       </Badge>
                     </div>
                     <Progress 
-                      value={parseFloat(result.impairment_accuracy)} 
+                      value={result.impairment.confidence_pct} 
                       className="mt-3 h-2 bg-rose-200 dark:bg-rose-900/30" 
                     />
                   </div>
@@ -579,20 +592,30 @@ export default function ImpairmentPage() {
                         </h3>
                       </div>
                       <Badge className="bg-blue-600 text-white border-0">
-                        {result.ecl_model}
+                        Ensemble
                       </Badge>
                     </div>
                     <div className="text-3xl font-bold text-blue-700 dark:text-blue-300 mb-2">
-                      {formatCurrency(result.ecl_1yr)}
+                      {formatCurrency(result.ecl_1yr.ensemble_mean)}
+                    </div>
+                    <div className="space-y-1 mb-2">
+                      {Object.entries(result.ecl_1yr)
+                        .filter(([k]) => k !== "ensemble_mean" && k !== "confidence_pct")
+                        .map(([model, val]) => (
+                          <div key={model} className="flex justify-between text-xs text-muted-foreground">
+                            <span>{model}</span>
+                            <span>{formatCurrency(val)}</span>
+                          </div>
+                        ))}
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Model Accuracy:</span>
+                      <span className="text-xs text-muted-foreground">Confidence:</span>
                       <Badge variant="outline" className="border-blue-300 text-blue-700 dark:text-blue-400">
-                        {result.ecl_accuracy}
+                        {result.ecl_1yr.confidence_pct.toFixed(1)}%
                       </Badge>
                     </div>
                     <Progress 
-                      value={parseFloat(result.ecl_accuracy)} 
+                      value={result.ecl_1yr.confidence_pct} 
                       className="mt-3 h-2 bg-blue-200 dark:bg-blue-900/30" 
                     />
                   </div>
@@ -611,17 +634,25 @@ export default function ImpairmentPage() {
                   {/* Models Info */}
                   <div className="grid grid-cols-2 gap-3 pt-2">
                     <div className="p-3 rounded-lg bg-muted/50 border">
-                      <div className="text-xs text-muted-foreground mb-1">Impairment Model</div>
-                      <div className="font-semibold text-sm">{result.impairment_model}</div>
+                      <div className="text-xs text-muted-foreground mb-1">Impairment Models</div>
+                      {Object.keys(result.impairment)
+                        .filter((k) => k !== "ensemble_mean" && k !== "confidence_pct")
+                        .map((model) => (
+                          <div key={model} className="font-semibold text-xs mt-0.5">{model}</div>
+                        ))}
                       <div className="text-xs text-green-600 dark:text-green-400 mt-1">
-                        ✓ {result.impairment_accuracy} accurate
+                        ✓ {result.impairment.confidence_pct.toFixed(1)}% confidence
                       </div>
                     </div>
                     <div className="p-3 rounded-lg bg-muted/50 border">
-                      <div className="text-xs text-muted-foreground mb-1">ECL Model</div>
-                      <div className="font-semibold text-sm">{result.ecl_model}</div>
+                      <div className="text-xs text-muted-foreground mb-1">ECL Models</div>
+                      {Object.keys(result.ecl_1yr)
+                        .filter((k) => k !== "ensemble_mean" && k !== "confidence_pct")
+                        .map((model) => (
+                          <div key={model} className="font-semibold text-xs mt-0.5">{model}</div>
+                        ))}
                       <div className="text-xs text-green-600 dark:text-green-400 mt-1">
-                        ✓ {result.ecl_accuracy} accurate
+                        ✓ {result.ecl_1yr.confidence_pct.toFixed(1)}% confidence
                       </div>
                     </div>
                   </div>

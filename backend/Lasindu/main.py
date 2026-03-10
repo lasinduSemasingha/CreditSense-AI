@@ -1,6 +1,8 @@
 """
 FastAPI — Impairment & 1-Year ECL Prediction Service
-All trained models are loaded and predictions returned separately per model.
+Uses only the two highest-accuracy models per target:
+  Impairment : Random Forest (R²=99.12%)  |  LightGBM (R²=99.09%)
+  1-Year ECL : Stacking Ensemble (R²=84.87%)  |  Random Forest (R²=84.48%)
 Scaler: scaler_advanced.pkl
 """
 
@@ -15,17 +17,19 @@ import os
 
 
 # ---------------------------------------------------------------------------
-# Model registry — (display_name, imp_file, ecl_file)
-# ecl_file=None means the model has no ECL counterpart
+# Model registries — top-2 models per target selected by R² on the test set
+#
+# Impairment  →  Random Forest (R²=0.9912)  |  LightGBM (R²=0.9909)
+# 1-Year ECL  →  Stacking Ensemble (R²=0.8487)  |  Random Forest (R²=0.8448)
 # ---------------------------------------------------------------------------
-_MODEL_REGISTRY = [
-    ("Random Forest",       "random_forest_impairment.pkl",       "random_forest_ecl.pkl"),
-    ("XGBoost",             "xgboost_impairment.pkl",             "xgboost_ecl.pkl"),
-    ("LightGBM",            "lightgbm_impairment.pkl",            "lightgbm_ecl.pkl"),
-    ("Gradient Boosting",   "gradient_boosting_impairment.pkl",   "gradient_boosting_ecl.pkl"),
-    ("Ridge Polynomial",    "ridge_polynomial_impairment.pkl",    "ridge_polynomial_ecl.pkl"),
-    ("Stacking Ensemble",   "stacking_ensemble_impairment.pkl",   "stacking_ensemble_ecl.pkl"),
-    ("XGBoost Tuned",       "xgboost_tuned_impairment.pkl",       None),
+_IMP_MODEL_REGISTRY = [
+    ("Random Forest", "random_forest_impairment.pkl"),
+    ("LightGBM",      "lightgbm_impairment.pkl"),
+]
+
+_ECL_MODEL_REGISTRY = [
+    ("Stacking Ensemble", "stacking_ensemble_ecl.pkl"),
+    ("Random Forest",     "random_forest_ecl.pkl"),
 ]
 
 _artefacts: dict = {}
@@ -42,16 +46,21 @@ async def lifespan(app: FastAPI):
     _artefacts["models_imp"] = {}   # name → model
     _artefacts["models_ecl"] = {}   # name → model
 
-    for name, imp_file, ecl_file in _MODEL_REGISTRY:
-        m_imp = _try_load(imp_file)
-        if m_imp:
-            _artefacts["models_imp"][name] = m_imp
+    for name, imp_file in _IMP_MODEL_REGISTRY:
+        m = _try_load(imp_file)
+        if m:
+            _artefacts["models_imp"][name] = m
             print(f"  ✓ Loaded impairment model: {name}")
-        if ecl_file:
-            m_ecl = _try_load(ecl_file)
-            if m_ecl:
-                _artefacts["models_ecl"][name] = m_ecl
-                print(f"  ✓ Loaded ECL model:        {name}")
+        else:
+            print(f"  ⚠ Impairment model not found: {imp_file}")
+
+    for name, ecl_file in _ECL_MODEL_REGISTRY:
+        m = _try_load(ecl_file)
+        if m:
+            _artefacts["models_ecl"][name] = m
+            print(f"  ✓ Loaded ECL model:        {name}")
+        else:
+            print(f"  ⚠ ECL model not found: {ecl_file}")
 
     print(f"\n✓ {len(_artefacts['models_imp'])} impairment models, "
           f"{len(_artefacts['models_ecl'])} ECL models loaded.")
@@ -62,10 +71,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Impairment & 1-Year ECL Prediction API",
     description=(
-        "Returns per-model predictions for **Impairment** and **1-Year ECL** "
-        "across all trained models, plus ensemble mean and confidence."
+        "Returns predictions for **Impairment** and **1-Year ECL** using the "
+        "two highest-accuracy models per target, plus ensemble mean and confidence. "
+        "Impairment: Random Forest (R²=99.12%) & LightGBM (R²=99.09%). "
+        "1-Year ECL: Stacking Ensemble (R²=84.87%) & Random Forest (R²=84.48%)."
     ),
-    version="2.0.0",
+    version="3.0.0",
     lifespan=lifespan,
 )
 

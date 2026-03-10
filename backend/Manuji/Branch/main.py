@@ -41,13 +41,27 @@ class BranchInput(BaseModel):
 
 
 # ── Helper ─────────────────────────────────────────────────────────────────
+def _resolve_label(encoder, value: str, field: str) -> int:
+    """Case-insensitive label lookup with a helpful error on miss."""
+    known: list[str] = list(encoder.classes_)
+    # 1. exact match
+    if value in known:
+        return int(encoder.transform([value])[0])
+    # 2. case-insensitive match
+    lower_map = {k.lower(): k for k in known}
+    canonical = lower_map.get(value.lower())
+    if canonical:
+        return int(encoder.transform([canonical])[0])
+    raise HTTPException(
+        status_code=422,
+        detail=f"Unknown {field} '{value}'. Valid values: {known}",
+    )
+
+
 def build_feature_vector(emp: EmployeeInput) -> np.ndarray:
     """Encode → scale → return (1, n_features) array."""
-    try:
-        branch_enc  = le_branch.transform([emp.Branch])[0]
-        gender_enc  = le_gender.transform([emp.Gender])[0]
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=f"Unknown label: {e}")
+    branch_enc = _resolve_label(le_branch, emp.Branch, "Branch")
+    gender_enc = _resolve_label(le_gender, emp.Gender, "Gender")
 
     raw = np.array([[
         branch_enc, gender_enc,
@@ -92,8 +106,17 @@ app.add_middleware(
 def root():
     return {
         "message": "Branch Performance Hybrid Model API",
-        "endpoints": ["/predict/employee", "/predict/branch"],
+        "endpoints": ["/predict/employee", "/predict/branch", "/labels"],
         "hybrid_weights": hybrid_weights,
+    }
+
+
+@app.get("/labels")
+def get_labels():
+    """Return the known branch and gender labels from the trained encoders."""
+    return {
+        "branches": list(le_branch.classes_),
+        "genders":  list(le_gender.classes_),
     }
 
 

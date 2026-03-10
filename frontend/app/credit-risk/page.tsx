@@ -63,21 +63,8 @@ type FinancialData = {
   ArrearsVat: number
   ArrearsOD: number
   LastReceiptPaidAmount: number
-  Prepayment: number
+  NetOutstanding: number
   arrears_intensity: number
-  debt_to_income_ratio: number
-  payment_coverage: number
-  arrears_ratio: number
-  overdue_intensity: number
-  payment_regularity: number
-  has_arrears: number
-  high_interest_flag: number
-  early_settlement: number
-  equipment_risk_score: number
-  branch_encoded: number
-  scheme_encoded: number
-  loan_age: number
-  tenor_to_age_ratio: number
 }
 
 type BehavioralData = {
@@ -107,29 +94,9 @@ type FeatureContribution = {
 }
 
 type PredictionResponse = {
-  pd: number
+  probability_of_default: number
+  predicted_class: number
   risk_category: string
-  confidence: number
-  timestamp: string
-  top_features: FeatureContribution[]
-  recommendations: string[]
-  model_info: {
-    name: string
-    version: string
-    training_date: string
-    features_used: number
-    accuracy: number
-    auc_score: number
-  }
-  feature_contributions: FeatureContribution[]
-  model_used: string
-  model_performance: {
-    accuracy: number
-    precision: number
-    recall: number
-    f1_score: number
-    auc_score: number
-  }
 }
 
 export default function CreditRiskPrediction() {
@@ -183,21 +150,8 @@ export default function CreditRiskPrediction() {
     ArrearsVat: 0,
     ArrearsOD: 0,
     LastReceiptPaidAmount: 0,
-    Prepayment: 0,
+    NetOutstanding: 0,
     arrears_intensity: 0,
-    debt_to_income_ratio: 0,
-    payment_coverage: 0,
-    arrears_ratio: 0,
-    overdue_intensity: 0,
-    payment_regularity: 0,
-    has_arrears: 0,
-    high_interest_flag: 0,
-    early_settlement: 0,
-    equipment_risk_score: 0,
-    branch_encoded: 0,
-    scheme_encoded: 0,
-    loan_age: 0,
-    tenor_to_age_ratio: 0
   })
 
   // Behavioral Data State
@@ -226,15 +180,37 @@ export default function CreditRiskPrediction() {
     setResult(null)
 
     try {
-      const response = await fetch('http://localhost:8002/predict', {
+      // Map form data to Kaveesha's CreditFeatures schema (flat object with aliases)
+      const response = await fetch('/api/credit-risk', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'accept': 'application/json',
         },
         body: JSON.stringify({
-          customer_info: customerInfo,
-          financial_data: financialData,
-          behavioral_data: behavioralData
+          FacilityAmount: financialData.FacilityAmount,
+          Tenor: financialData.Tenor,
+          "Effective Rate": financialData.EffectiveRate,
+          FlatRate: financialData.FlatRate,
+          NetRental: financialData.NetRental,
+          DownPayment: financialData.DownPayment,
+          "No of Rental in arrears": financialData.NoOfRentalInArrears,
+          Age: customerInfo.Age,
+          ArrearsCapital: financialData.ArrearsCapital,
+          ArrearsInterest: financialData.ArrearsInterest,
+          ArrearsVat: financialData.ArrearsVat,
+          ArrearsOD: financialData.ArrearsOD,
+          ArrearsOther: 0,
+          ArrearsInsu: 0,
+          ArrearsSundry: 0,
+          Advance: 0,
+          AdvanceRental: 0,
+          AdvanceSundry: 0,
+          AdvanceOther: 0,
+          "Last Receipt Paid Amount": financialData.LastReceiptPaidAmount,
+          "NET-OUTSTANDING": financialData.NetOutstanding,
+          ArrearsInsuEasyPay: 0,
+          arrears_intensity: financialData.arrears_intensity,
         })
       })
 
@@ -638,13 +614,24 @@ export default function CreditRiskPrediction() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="prepayment">Prepayment</Label>
+                        <Label htmlFor="netOutstanding">Net Outstanding</Label>
                         <Input
-                          id="prepayment"
+                          id="netOutstanding"
                           type="number"
-                          value={financialData.Prepayment}
-                          onChange={(e) => setFinancialData({...financialData, Prepayment: Number(e.target.value)})}
-                          placeholder="0"
+                          value={financialData.NetOutstanding}
+                          onChange={(e) => setFinancialData({...financialData, NetOutstanding: Number(e.target.value)})}
+                          placeholder="500000"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="arrearsIntensity">Arrears Intensity</Label>
+                        <Input
+                          id="arrearsIntensity"
+                          type="number"
+                          step="0.01"
+                          value={financialData.arrears_intensity}
+                          onChange={(e) => setFinancialData({...financialData, arrears_intensity: Number(e.target.value)})}
+                          placeholder="0.65"
                         />
                       </div>
                     </div>
@@ -833,7 +820,7 @@ export default function CreditRiskPrediction() {
                 <CardContent className="space-y-4">
                   <div className="text-center">
                     <div className="text-5xl font-bold mb-2">
-                      {(result.pd * 100).toFixed(2)}%
+                      {(result.probability_of_default * 100).toFixed(2)}%
                     </div>
                     <div className="text-sm text-muted-foreground mb-4">
                       Probability of Default
@@ -842,20 +829,12 @@ export default function CreditRiskPrediction() {
                       {result.risk_category}
                     </Badge>
                   </div>
-
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span>Confidence</span>
-                      <span className="font-semibold">{(result.confidence * 100).toFixed(0)}%</span>
+                      <span>Default Probability</span>
+                      <span className="font-semibold">{(result.probability_of_default * 100).toFixed(1)}%</span>
                     </div>
-                    <Progress value={result.confidence * 100} className="h-2" />
-                  </div>
-
-                  <div className="pt-2 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(result.timestamp).toLocaleString()}
-                    </div>
+                    <Progress value={result.probability_of_default * 100} className="h-2" />
                   </div>
                 </CardContent>
               </Card>
@@ -865,83 +844,22 @@ export default function CreditRiskPrediction() {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <BarChart3 className="h-5 w-5" />
-                    Model Performance
+                    Model Info
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Model</span>
-                      <span className="font-medium">{result.model_used}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Accuracy</span>
-                      <span className="font-medium">{(result.model_performance.accuracy * 100).toFixed(1)}%</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Precision</span>
-                      <span className="font-medium">{(result.model_performance.precision * 100).toFixed(1)}%</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Recall</span>
-                      <span className="font-medium">{(result.model_performance.recall * 100).toFixed(1)}%</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">AUC Score</span>
-                      <span className="font-medium">{(result.model_performance.auc_score * 100).toFixed(1)}%</span>
-                    </div>
+                <CardContent className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Model</span>
+                    <span className="font-medium">Stacking Ensemble</span>
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Top Features */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
-                    Key Risk Factors
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {result.top_features.map((feature, index) => (
-                      <div key={index} className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="font-medium">{feature.feature}</span>
-                          <span className={feature.impact === "increases_risk" ? "text-red-600" : "text-green-600"}>
-                            {feature.impact === "increases_risk" ? "↑" : "↓"} {Math.abs(feature.contribution * 100).toFixed(1)}%
-                          </span>
-                        </div>
-                        <Progress 
-                          value={Math.abs(feature.contribution) * 100} 
-                          className={`h-1.5 ${feature.impact === "increases_risk" ? "bg-red-100" : "bg-green-100"}`}
-                        />
-                        <div className="text-xs text-muted-foreground">
-                          Value: {feature.value} | Importance: {(feature.importance * 100).toFixed(0)}%
-                        </div>
-                      </div>
-                    ))}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Base Models</span>
+                    <span className="font-medium">CatBoost + RF + XGBoost</span>
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Recommendations */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Info className="h-5 w-5" />
-                    Recommendations
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2">
-                    {result.recommendations.map((rec, index) => (
-                      <li key={index} className="flex items-start gap-2 text-sm">
-                        <ChevronRight className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
-                        <span>{rec}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Predicted Class</span>
+                    <span className="font-medium">{result.predicted_class === 1 ? 'Default' : 'Non-Default'}</span>
+                  </div>
                 </CardContent>
               </Card>
             </div>

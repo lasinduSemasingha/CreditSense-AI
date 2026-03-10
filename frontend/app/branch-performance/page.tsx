@@ -6,7 +6,9 @@ import { authClient } from "@/utils/auth-client";
 import { AppHeader } from "@/components/app-header";
 import { BranchPerformanceAnalyzer } from "@/components/branch-performance/branch-analyzer";
 import { PerformanceResults } from "@/components/branch-performance/performance-results";
-import { BarChart3, TrendingUp, Activity, Loader2, Lock } from "lucide-react";
+import { EmployeePerformanceAnalyzer } from "@/components/branch-performance/employee-analyzer";
+import { BarChart3, TrendingUp, Activity, Loader2, Users } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function BranchPerformancePage() {
   const [results, setResults] = useState<any[]>([]);
@@ -81,21 +83,39 @@ export default function BranchPerformancePage() {
             </div>
           </div>
 
-          {/* Main Grid - Balanced Layout */}
-          <div className="grid lg:grid-cols-2 gap-6 xl:gap-8">
-            {/* Input Form - Left Column */}
-            <div className="lg:sticky lg:top-20 lg:self-start">
-              <BranchPerformanceAnalyzer
-                onAnalyze={setResults}
-                setIsLoading={setIsLoading}
-              />
-            </div>
+          {/* Tabs: Facility Performance  |  Employee Performance */}
+          <Tabs defaultValue="facility" className="space-y-6">
+            <TabsList className="grid grid-cols-2 w-full max-w-sm h-11 p-1 bg-muted/50">
+              <TabsTrigger value="facility" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Facility Analysis
+              </TabsTrigger>
+              <TabsTrigger value="employee" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Employee Score
+              </TabsTrigger>
+            </TabsList>
 
-            {/* Results - Right Column */}
-            <div>
-              <PerformanceResults results={results} isLoading={isLoading} />
-            </div>
-          </div>
+            {/* Facility Performance — Manuji Customer API (port 8003) */}
+            <TabsContent value="facility">
+              <div className="grid lg:grid-cols-2 gap-6 xl:gap-8">
+                <div className="lg:sticky lg:top-20 lg:self-start">
+                  <BranchPerformanceAnalyzer
+                    onAnalyze={setResults}
+                    setIsLoading={setIsLoading}
+                  />
+                </div>
+                <div>
+                  <PerformanceResults results={results} isLoading={isLoading} />
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Employee Performance — Manuji Branch API (port 8002) */}
+            <TabsContent value="employee">
+              <EmployeePerformanceAnalyzer />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
