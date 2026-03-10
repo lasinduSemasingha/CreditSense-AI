@@ -3,8 +3,11 @@
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
 
-// Edge-friendly OpenAI client
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// OpenRouter client configured for DeepSeek V3
+const openai = new OpenAI({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1",
+});
 
 // Run this route on the Edge runtime
 export const runtime = "edge";
@@ -27,7 +30,7 @@ export async function POST(req: Request) {
 
   // 2) Create an embedding from the user's query
   const embeddingRes = await openai.embeddings.create({
-    model: "text-embedding-3-small",
+    model: "openai/text-embedding-3-small",
     input: userQuery.replace(/\n/g, " "),
   });
 
@@ -97,6 +100,7 @@ export async function POST(req: Request) {
     "Ask one clarifying question first when the request is ambiguous or missing key details.",
     "Never fabricate policy details, prices, eligibility rules, or contact info.",
     "Be concise and, when possible, paraphrase relevant facts from the context in your own words.",
+    "IMPORTANT: All user messages are plain text. Some may have been transcribed from voice — treat them exactly the same as typed messages. Never say you cannot hear or process audio or voice messages.",
   ].join(" ");
 
   // !v3
@@ -142,7 +146,7 @@ export async function POST(req: Request) {
       const encoder = new TextEncoder();
       try {
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: "deepseek/deepseek-chat",
           stream: true,
           messages: [
             { role: "system", content: systemPrompt },

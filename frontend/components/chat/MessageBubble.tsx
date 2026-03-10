@@ -2,8 +2,9 @@
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Bot, User, Volume2 } from "lucide-react";
+import { Bot, FileText, User, Volume2 } from "lucide-react";
 import type { Message } from "./types";
+import ReactMarkdown from "react-markdown";
 
 type MessageBubbleProps = {
   message: Message;
@@ -65,6 +66,16 @@ export function MessageBubble({ message, onPlayAudio }: MessageBubbleProps) {
             : "bg-muted"
         }`}
       >
+        {message.type === "document" && message.documentName && (
+          <div className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 mb-2 text-xs font-medium ${
+            message.role === "user"
+              ? "bg-primary-foreground/20 text-primary-foreground"
+              : "bg-primary/10 text-primary"
+          }`}>
+            <FileText className="h-3.5 w-3.5 shrink-0" />
+            {message.documentName}
+          </div>
+        )}
         {message.type === "image" && message.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -88,7 +99,13 @@ export function MessageBubble({ message, onPlayAudio }: MessageBubbleProps) {
             Play Audio
           </Button>
         )}
-        <p className="text-sm leading-relaxed">{message.content}</p>
+        <div className={`text-sm leading-relaxed prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-strong:font-semibold ${
+            message.role === "user"
+              ? "prose-invert"
+              : "dark:prose-invert"
+          }`}>
+          <ReactMarkdown>{message.content}</ReactMarkdown>
+        </div>
         <p
           className={`text-xs mt-1 ${
             message.role === "user"

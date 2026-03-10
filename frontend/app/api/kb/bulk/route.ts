@@ -19,9 +19,9 @@ function getSupabase() {
 }
 
 function getOpenAI() {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("OPENAI_API_KEY is not configured");
-  return new OpenAI({ apiKey });
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured");
+  return new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1" });
 }
 
 export async function POST(req: Request) {
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     const openai = getOpenAI();
     const embedInput = normalized.map((doc) => doc.content.replace(/\n/g, " "));
     const embedRes = await openai.embeddings.create({
-      model: "text-embedding-3-small",
+      model: "openai/text-embedding-3-small",
       input: embedInput,
     });
 

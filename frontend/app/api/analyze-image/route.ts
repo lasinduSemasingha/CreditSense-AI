@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-    if (!OPENAI_API_KEY) {
+    const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+    if (!OPENROUTER_API_KEY) {
       return NextResponse.json(
-        { error: "Missing OPENAI_API_KEY" },
+        { error: "Missing OPENROUTER_API_KEY" },
         { status: 500 }
       );
     }
@@ -33,14 +33,14 @@ export async function POST(req: Request) {
     const prompt =
       "Provide a concise, 1-2 sentence, neutral description of this image. Focus on key objects and scene context.";
 
-    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+    const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "google/gemini-2.0-flash-001",
         messages: [
           {
             role: "user",
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     if (!resp.ok) {
       const text = await resp.text();
       return NextResponse.json(
-        { error: "OpenAI vision request failed", details: text },
+        { error: "OpenRouter vision request failed", details: text },
         { status: 502 }
       );
     }

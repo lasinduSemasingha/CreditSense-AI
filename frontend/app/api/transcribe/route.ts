@@ -34,17 +34,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No audio received" }, { status: 400 });
     }
 
-    const dgRes = await fetch("https://api.deepgram.com/v1/listen", {
-      method: "POST",
-      headers: {
-        Authorization: `Token ${DEEPGRAM_API_KEY}`,
-        "Content-Type": mimeType,
-        Accept: "application/json",
-      },
-      body: audioBuffer,
-      // For pre-recorded audio, consider adding query params like model or smart_format
-      // e.g., url: "https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true"
-    });
+    const dgRes = await fetch(
+      "https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&language=en",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Token ${DEEPGRAM_API_KEY}`,
+          "Content-Type": mimeType,
+          Accept: "application/json",
+        },
+        body: audioBuffer,
+      }
+    );
 
     if (!dgRes.ok) {
       const text = await dgRes.text();

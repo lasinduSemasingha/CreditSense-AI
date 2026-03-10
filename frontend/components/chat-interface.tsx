@@ -12,6 +12,8 @@ import type { Message, MessageType } from "@/components/chat/types";
 import { toast } from "sonner";
 import { useCreateChatQueue } from "@/hooks/use-chat-queues";
 
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp", "image/svg+xml"];
+
 export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -29,28 +31,47 @@ export function ChatInterface() {
   const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
+  const [isExtractingDoc, setIsExtractingDoc] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<File | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const liveTranscriptRef = useRef<{ final: string; interim: string }>({ final: "", interim: "" });
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isRecordingRef = useRef(false);
   const router = useRouter();
 
   const { mutate: createChatQueue } = useCreateChatQueue();
 
-  // Helper to generate IDs
   const newId = () =>
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random()}`;
 
-  // Helper to map to API format
   const toAPIMessages = (msgs: Message[]) =>
-    msgs.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    msgs.map((m) => ({ role: m.role, content: m.content }));
 
-  // Stream assistant response from /api/chat and append chunks to the placeholder assistant message
+  // Strip markdown so TTS doesn't speak "star star" or "hash hash"
+  const stripMarkdown = (text: string): string =>
+    text
+      .replace(/#{1,6}\s?/g, "")          // headings
+      .replace(/\*\*(.+?)\*\*/g, "$1")    // bold
+      .replace(/\*(.+?)\*/g, "$1")        // italic
+      .replace(/_{1,2}(.+?)_{1,2}/g, "$1") // underscore bold/italic
+      .replace(/~~(.+?)~~/g, "$1")        // strikethrough
+      .replace(/`{1,3}[^`]*`{1,3}/g, "") // inline code / code blocks
+      .replace(/^\s*[-*+]\s+/gm, "")     // unordered list bullets
+      .replace(/^\s*\d+\.\s+/gm, "")    // ordered list numbers
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links → keep label
+      .replace(/!\[[^\]]*\]\([^)]+\)/g, "")    // images
+      .replace(/^>+\s?/gm, "")           // blockquotes
+      .replace(/[-]{3,}|[*]{3,}|[_]{3,}/g, "") // horizontal rules
+      .replace(/\n{2,}/g, ". ")          // blank lines → pause
+      .trim();
+
+  // ── Stream assistant reply ──────────────────────────────────────────────────
   const streamAssistantResponse = async (
     prevMsgs: Message[],
     assistantId: string
@@ -62,9 +83,7 @@ export function ChatInterface() {
         body: JSON.stringify({ messages: toAPIMessages(prevMsgs) }),
       });
 
-      if (!res.ok || !res.body) {
-        throw new Error("Failed to get a response from the server");
-      }
+      if (!res.ok || !res.body) throw new Error("Failed to get a response from the server");
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -75,17 +94,12 @@ export function ChatInterface() {
       while (!done) {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
-        const chunk = decoder.decode(value || new Uint8Array(), {
-          stream: true,
-        });
+        const chunk = decoder.decode(value || new Uint8Array(), { stream: true });
         if (chunk) {
           accumulated += chunk;
           setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantId ? { ...m, content: m.content + chunk } : m
-            )
+            prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + chunk } : m))
           );
-          // Stop the typing indicator once the first non-empty chunk arrives
           if (!firstChunkReceived && chunk.trim().length > 0) {
             firstChunkReceived = true;
             setIsTyping(false);
@@ -96,172 +110,295 @@ export function ChatInterface() {
     } catch (err) {
       console.error(err);
       setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantId
-            ? { ...m, content: "Sorry, something went wrong." }
-            : m
-        )
+        prev.map((m) => (m.id === assistantId ? { ...m, content: "Sorry, something went wrong." } : m))
       );
       return "";
     } finally {
-      // Ensure typing stops if no chunk ever arrived (e.g., error)
       setIsTyping(false);
     }
   };
 
-  const handleSend = async (
-    messageType: MessageType = "text",
-    content?: string,
-    imageFile?: File
-  ) => {
-    const messageContent = content || input;
-    const imageToSend = imageFile || selectedImage || null;
-    if (!messageContent.trim() && !imageToSend) return;
+  // ── Handle file selection ───────────────────────────────────────────────────
+  const handleFileSelect = (file: File) => {
+    if (IMAGE_TYPES.includes(file.type) || file.name.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/i)) {
+      setSelectedDocument(null);
+      setSelectedImage(file);
+    } else {
+      setSelectedImage(null);
+      setSelectedDocument(file);
+    }
+  };
 
-    // Text-only path
+  // ── Send message (text / image / document) ──────────────────────────────────
+  const handleSend = async () => {
+    const userText = input.trim();
+    if (!userText && !selectedImage && !selectedDocument) return;
+
+    // ── Image path ────────────────────────────────────────────────────────────
+    if (selectedImage) {
+      const imageFile = selectedImage;
+      const imageUrl = URL.createObjectURL(imageFile);
+      setSelectedImage(null);
+      setInput("");
+
+      let imageDescription = "";
+      try {
+        setIsAnalyzingImage(true);
+        const form = new FormData();
+        form.append("file", imageFile);
+        const res = await fetch("/api/analyze-image", { method: "POST", body: form });
+        if (res.ok) {
+          const data = (await res.json()) as { description?: string };
+          imageDescription = (data?.description || "").trim();
+        } else {
+          toast.error("Image analysis failed");
+        }
+      } catch (e) {
+        console.error("Image analysis error:", e);
+        toast.error("Image analysis error");
+      } finally {
+        setIsAnalyzingImage(false);
+      }
+
+      const contentParts: string[] = [];
+      if (imageDescription) contentParts.push(`[Image content: ${imageDescription}]`);
+      if (userText) contentParts.push(userText);
+      const messageContent = contentParts.join("\n\n") || "[Image attached]";
+
+      const userMessage: Message = {
+        id: newId(), role: "user",
+        content: userText || "(see attached image)",
+        type: "image", timestamp: new Date(), imageUrl,
+      };
+      const assistantPlaceholder: Message = {
+        id: newId(), role: "assistant", content: "", type: "text", timestamp: new Date(),
+      };
+      const nextMessages = [...messages, { ...userMessage, content: messageContent }];
+      setMessages((prev) => [...prev, userMessage, assistantPlaceholder]);
+      setIsTyping(true);
+      streamAssistantResponse(nextMessages, assistantPlaceholder.id);
+      return;
+    }
+
+    // ── Document path ─────────────────────────────────────────────────────────
+    if (selectedDocument) {
+      const docFile = selectedDocument;
+      const docName = docFile.name;
+      setSelectedDocument(null);
+      setInput("");
+
+      let extractedText = "";
+      try {
+        setIsExtractingDoc(true);
+        const form = new FormData();
+        form.append("file", docFile);
+        const res = await fetch("/api/extract-document", { method: "POST", body: form });
+        if (res.ok) {
+          const data = (await res.json()) as { text?: string };
+          extractedText = (data?.text || "").trim();
+        } else {
+          const err = await res.json().catch(() => ({})) as { error?: string };
+          toast.error(err?.error || "Document extraction failed");
+        }
+      } catch (e) {
+        console.error("Document extraction error:", e);
+        toast.error("Document extraction error");
+      } finally {
+        setIsExtractingDoc(false);
+      }
+
+      if (!extractedText) return;
+
+      const contextContent = [
+        `[Attached document: ${docName}]`,
+        `Document contents:\n${extractedText}`,
+        userText ? `\nUser question: ${userText}` : "",
+      ].filter(Boolean).join("\n\n");
+
+      const userMessage: Message = {
+        id: newId(), role: "user",
+        content: userText || `Uploaded document: ${docName}`,
+        type: "document", timestamp: new Date(), documentName: docName,
+      };
+      const assistantPlaceholder: Message = {
+        id: newId(), role: "assistant", content: "", type: "text", timestamp: new Date(),
+      };
+      const nextMessages = [...messages, { ...userMessage, content: contextContent }];
+      setMessages((prev) => [...prev, userMessage, assistantPlaceholder]);
+      setIsTyping(true);
+      streamAssistantResponse(nextMessages, assistantPlaceholder.id);
+      return;
+    }
+
+    // ── Plain text path ───────────────────────────────────────────────────────
+    setInput("");
     const userMessage: Message = {
-      id: newId(),
-      role: "user",
-      content: messageContent,
-      type: messageType,
-      timestamp: new Date(),
+      id: newId(), role: "user", content: userText, type: "text", timestamp: new Date(),
     };
     const assistantPlaceholder: Message = {
-      id: newId(),
-      role: "assistant",
-      content: "",
-      type: "text",
-      timestamp: new Date(),
+      id: newId(), role: "assistant", content: "", type: "text", timestamp: new Date(),
     };
     const nextMessages = [...messages, userMessage];
     setMessages((prev) => [...prev, userMessage, assistantPlaceholder]);
-    setInput("");
     setIsTyping(true);
     streamAssistantResponse(nextMessages, assistantPlaceholder.id);
   };
 
+  // ── Recording ───────────────────────────────────────────────────────────────
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
+      liveTranscriptRef.current = { final: "", interim: "" };
+
+      // ── Live speech display via Web Speech API ──────────────────────────────
+      const SpeechRecognitionAPI =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognitionAPI) {
+        const recognition = new SpeechRecognitionAPI();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = "en-US";
+        // Auto-stop and send after a silence window
+        const triggerAutoSend = (delayMs: number) => {
+          if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+          silenceTimerRef.current = setTimeout(() => {
+            silenceTimerRef.current = null;
+            if (isRecordingRef.current && liveTranscriptRef.current.final.trim()) {
+              try { recognitionRef.current?.stop(); } catch {}
+              if (mediaRecorderRef.current) {
+                mediaRecorderRef.current.stop();
+                isRecordingRef.current = false;
+                setIsRecording(false);
+              }
+            }
+          }, delayMs);
+        };
+
+        recognition.onresult = (event: any) => {
+          let interim = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            if (event.results[i].isFinal) {
+              liveTranscriptRef.current.final += event.results[i][0].transcript;
+            } else {
+              interim += event.results[i][0].transcript;
+            }
+          }
+          liveTranscriptRef.current.interim = interim;
+          setInput(liveTranscriptRef.current.final + interim);
+          // Reset 2-second silence timer on every new speech result
+          triggerAutoSend(2000);
+        };
+        recognition.onspeechend = () => {
+          // Speech paused — send sooner if we already have final text
+          if (liveTranscriptRef.current.final.trim()) triggerAutoSend(1500);
+        };
+        recognition.onerror = (e: any) => {
+          if (e.error !== "no-speech") console.warn("SpeechRecognition error:", e.error);
+        };
+        recognitionRef.current = recognition;
+        try { recognition.start(); } catch { /* ignore if already started */ }
+      }
 
       mediaRecorder.ondataavailable = (event) => {
         audioChunksRef.current.push(event.data);
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/webm",
-        });
+        // Stop live speech recognition
+        try { recognitionRef.current?.stop(); } catch { /* ignore */ }
+        // Use Web Speech API final transcript if available, else fall back to Deepgram
+        const liveTranscript = liveTranscriptRef.current.final.trim();
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         const audioUrl = URL.createObjectURL(audioBlob);
+        setInput(""); // clear live text from input field
+
+        // Skip transcription if the recording is too short (< 1KB = likely silence)
+        if (audioBlob.size < 1000 && !liveTranscript) {
+          toast.error("Recording too short. Hold the button longer and speak clearly.");
+          return;
+        }
 
         (async () => {
-          // Transcribe with Deepgram via our API route
-          let transcript = "";
-          try {
-            setIsTranscribing(true);
-            const res = await fetch("/api/transcribe", {
-              method: "POST",
-              headers: { "Content-Type": "audio/webm" },
-              body: audioBlob,
-            });
-            if (res.ok) {
-              const data = (await res.json()) as { transcript?: string };
-              transcript = (data?.transcript || "").trim();
-            } else {
-              console.error("Transcription failed:", await res.text());
-              toast.error("Transcription failed");
+          let transcript = liveTranscript; // prefer Web Speech API result
+
+          // Fall back to Deepgram only if Web Speech API got nothing
+          if (!transcript) {
+            try {
+              setIsTranscribing(true);
+              const res = await fetch("/api/transcribe", {
+                method: "POST",
+                headers: { "Content-Type": "audio/webm" },
+                body: audioBlob,
+              });
+              if (res.ok) {
+                const data = (await res.json()) as { transcript?: string };
+                transcript = (data?.transcript || "").trim();
+                if (!transcript) {
+                  console.warn("Deepgram returned empty transcript. Audio size:", audioBlob.size);
+                }
+              } else {
+                const errData = await res.json().catch(() => ({})) as { error?: string; details?: string };
+                console.error("Transcription failed:", errData);
+                toast.error(errData?.details || errData?.error || "Transcription failed");
+              }
+            } catch (e) {
+              console.error("Transcription error:", e);
+              toast.error("Transcription error");
+            } finally {
+              setIsTranscribing(false);
             }
-          } catch (e) {
-            console.error("Transcription error:", e);
-            toast.error("Transcription error");
-          } finally {
-            setIsTranscribing(false);
           }
 
-          const content = transcript || "[Voice message]";
+          // If transcription returned nothing, don't send a confusing placeholder to the AI
+          if (!transcript) {
+            toast.error("No speech detected. Please speak clearly and try again.");
+            return;
+          }
 
           const userMessage: Message = {
-            id: newId(),
-            role: "user",
-            content,
-            type: "voice",
-            timestamp: new Date(),
-            audioUrl,
+            id: newId(), role: "user", content: transcript, type: "voice", timestamp: new Date(), audioUrl,
           };
-
           const assistantPlaceholder: Message = {
-            id: newId(),
-            role: "assistant",
-            content: "",
-            type: "text",
-            timestamp: new Date(),
+            id: newId(), role: "assistant", content: "", type: "text", timestamp: new Date(),
           };
-
           const nextMessages = [...messages, userMessage];
-
           setMessages((prev) => [...prev, userMessage, assistantPlaceholder]);
           setIsTyping(true);
 
-          // Stream response from API with transcribed text content
-          const finalText = await streamAssistantResponse(
-            nextMessages,
-            assistantPlaceholder.id
-          );
+          const finalText = await streamAssistantResponse(nextMessages, assistantPlaceholder.id);
 
-          // Generate TTS audio for assistant reply if this was an audio message
+          // TTS reply for voice input
           try {
-            if (finalText && finalText.trim().length > 0) {
+            if (finalText?.trim()) {
               setIsSynthesizing(true);
               const ttsRes = await fetch("/api/tts", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  text: finalText,
-                  voice: "alloy",
-                  format: "mp3",
-                }),
+                body: JSON.stringify({ text: stripMarkdown(finalText), voice: "alloy" }),
               });
               if (ttsRes.ok) {
-                const ttsJson = (await ttsRes.json()) as {
-                  audioBase64?: string;
-                  format?: string;
-                };
+                const ttsJson = (await ttsRes.json()) as { audioBase64?: string; format?: string };
                 if (ttsJson?.audioBase64) {
-                  const bytes = Uint8Array.from(
-                    atob(ttsJson.audioBase64),
-                    (c) => c.charCodeAt(0)
-                  );
-                  const blob = new Blob([bytes], {
-                    type: `audio/${ttsJson.format || "mp3"}`,
-                  });
+                  const bytes = Uint8Array.from(atob(ttsJson.audioBase64), (c) => c.charCodeAt(0));
+                  const blob = new Blob([bytes], { type: `audio/${ttsJson.format || "mp3"}` });
                   const url = URL.createObjectURL(blob);
                   setMessages((prev) =>
                     prev.map((m) =>
-                      m.id === assistantPlaceholder.id
-                        ? { ...m, type: "voice", audioUrl: url }
-                        : m
+                      m.id === assistantPlaceholder.id ? { ...m, type: "voice", audioUrl: url } : m
                     )
                   );
-                  // Auto-play the assistant's TTS reply once ready
-                  try {
-                    const audio = new Audio(url);
-                    void audio.play();
-                  } catch (err) {
-                    // Autoplay might be blocked by the browser; user can tap to play.
-                    console.warn("Autoplay failed; awaiting user interaction.");
-                  }
+                  try { void new Audio(url).play(); } catch { /* autoplay blocked */ }
                 }
               } else {
-                console.error("TTS failed:", await ttsRes.text());
                 toast.error("TTS failed");
               }
             }
           } catch (e) {
             console.error("TTS error:", e);
-            toast.error("TTS error");
           } finally {
             setIsSynthesizing(false);
           }
@@ -270,23 +407,30 @@ export function ChatInterface() {
         stream.getTracks().forEach((track) => track.stop());
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(250); // collect data every 250ms to ensure chunks are captured
+      isRecordingRef.current = true;
       setIsRecording(true);
     } catch (error) {
       console.error("Error accessing microphone:", error);
+      toast.error("Microphone access denied");
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+    if (mediaRecorderRef.current && isRecordingRef.current) {
+      try { recognitionRef.current?.stop(); } catch { /* ignore */ }
       mediaRecorderRef.current.stop();
+      isRecordingRef.current = false;
       setIsRecording(false);
     }
   };
 
   const playAudio = (audioUrl: string) => {
-    const audio = new Audio(audioUrl);
-    audio.play();
+    new Audio(audioUrl).play();
   };
 
   useEffect(() => {
@@ -294,28 +438,23 @@ export function ChatInterface() {
   }, [messages, isTyping]);
 
   const clearChat = () => {
-    // Stop any active recording
     try {
-      if (mediaRecorderRef.current && isRecording) {
-        mediaRecorderRef.current.stop();
-      }
+      if (mediaRecorderRef.current && isRecording) mediaRecorderRef.current.stop();
     } catch {}
-
     setMessages([
       {
-        id: "1",
-        role: "assistant",
-        content:
-          "Hello! I'm your motorcycle leasing assistant. How can I help you today? Feel free to ask about our leasing options, pricing, available models, or any other questions you might have.",
-        type: "text",
-        timestamp: new Date(),
+        id: "1", role: "assistant",
+        content: "Hello! I'm your motorcycle leasing assistant. How can I help you today? Feel free to ask about our leasing options, pricing, available models, or any other questions you might have.",
+        type: "text", timestamp: new Date(),
       },
     ]);
     setInput("");
     setSelectedImage(null);
+    setSelectedDocument(null);
     setIsTyping(false);
     setIsRecording(false);
     setIsAnalyzingImage(false);
+    setIsExtractingDoc(false);
     setIsTranscribing(false);
     setIsSynthesizing(false);
     toast.info("Chat cleared");
@@ -340,15 +479,20 @@ export function ChatInterface() {
         <Composer
           input={input}
           onInputChange={setInput}
-          onSend={() => handleSend()}
+          onSend={handleSend}
           isTyping={isTyping}
           isRecording={isRecording}
           isAnalyzingImage={isAnalyzingImage}
           isTranscribing={isTranscribing}
           isSynthesizing={isSynthesizing}
+          isExtractingDoc={isExtractingDoc}
           onStartRecording={startRecording}
           onStopRecording={stopRecording}
-          hasSelectedImage={!!selectedImage}
+          selectedImage={selectedImage}
+          selectedDocument={selectedDocument}
+          onFileSelect={handleFileSelect}
+          onClearImage={() => setSelectedImage(null)}
+          onClearDocument={() => setSelectedDocument(null)}
         />
       </div>
     </>

@@ -1,4 +1,4 @@
-export type MessageType = "text" | "image" | "voice" | "image-analysis";
+export type MessageType = "text" | "image" | "voice" | "image-analysis" | "document";
 
 export type Message = {
   id: string;
@@ -8,4 +8,5 @@ export type Message = {
   timestamp: Date;
   imageUrl?: string;
   audioUrl?: string;
+  documentName?: string;
 };
