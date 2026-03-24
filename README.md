@@ -760,6 +760,17 @@ CREATE INDEX ON document_embeddings USING ivfflat (embedding vector_cosine_ops);
 
 ---
 
+## 📐 Machine Learning Equations Reference
+
+A complete catalogue of every mathematical equation, formula, and algorithmic definition
+used across all ML components (preprocessing, feature engineering, model architectures,
+loss functions, evaluation metrics, and ensemble methods) is available in
+**[EQUATIONS.md](./EQUATIONS.md)**.  
+This document is intended as a ready-to-cite reference for research papers and technical
+reports.
+
+---
+
 ## 📈 Machine Learning Model Training
 
 ### Training Pipeline
